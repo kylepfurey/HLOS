@@ -8,7 +8,7 @@
 #include "string.h"
 
 /** Combines a foreground and background color for the Video Graphics Array. */
-#define VGA_COLOR(fg, bg) ((bg << 4) | (fg & 15))
+#define VGA_COLOR(fg, bg) (((bg) << 4) | ((fg) & 15))
 
 /** Returns the current index of the VGA. */
 #define VGA_POS (VGA.column + (VGA.row * VGA_WIDTH))

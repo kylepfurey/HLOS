@@ -8,7 +8,7 @@
 #include "string.h"
 
 /** Returns the number of elements in an array. */
-#define ARRAY_SIZE(array) (sizeof(array) / sizeof((array)[0]))
+#define ARRAY_SIZE(array) (sizeof((array)) / sizeof(((array))[0]))
 
 /** An indicator that a value was not found. */
 #define NOT_FOUND ((uint_t)-1)

@@ -189,7 +189,7 @@ extern volatile keyboard_t keyboard;
  * The maximum string length is min(<len>, MAX_INPUT_LEN).
  * The returned string is reused for all conversions.
  */
-string_t read(ushort_t len, bool_t ctrl_chars, string_t start);
+string_t read(uint_t len, bool_t ctrl_chars, string_t start);
 
 /** Reads a single character from the user. */
 char_t readchar();

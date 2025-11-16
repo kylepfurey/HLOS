@@ -7,6 +7,7 @@
 #include "assembly.h"
 #include "interrupt.h"
 #include "time.h"
+#include "malloc.h"
 
 /** Initializes the Programmable Interval Timer. */
 static void PIT_init() {
@@ -23,12 +24,17 @@ static void keyboard_init() {
     IDT_bind(PIC_KEYBOARD, keyboard_interrupt, IDT_KERNEL_SELECTOR, IDT_KERNEL_FLAGS);
 }
 
+/** Initializes memory paging, virtual addressing, and the heap. */
+static void heap_init() {
+    set(&__page_directory_start, 0, &__page_table_end - &__page_directory_start);
+    // TODO: Let the kernel RUN again!
+    //enable_paging();
+}
+
 /** Initializes the kernel. */
 void init() {
-    // Zero uninitialized data
-    set(&__bss_start, 0, abs(&__bss_end - &__bss_start));
-    // Initialize the Programmable Interval Timer
+    set(&__bss_start, 0, &__bss_end - &__bss_start);
     PIT_init();
-    // Initialize the keyboard
     keyboard_init();
+    heap_init();
 }

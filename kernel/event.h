@@ -17,12 +17,12 @@
 #define MAX_COROUTINES_PROCESSED 2
 
 /** A handle representing a scheduled coroutine. */
-typedef uint_t handle_t;
+typedef uint_t chandle_t;
 
 /** An asynchronous coroutine. */
 typedef struct coroutine {
     /** The current handle for this coroutine. */
-    handle_t handle;
+    chandle_t handle;
 
     /** When this coroutine will be invoked. */
     uint_t schedule;
@@ -48,12 +48,14 @@ void invoke(uint_t index, void *args);
 
 /**
  * Sets a coroutine callback to be invoked after the given number of milliseconds.
+ * <coroutine> is a function pointer with a void pointer to arguments as a parameter and no return type.
+ * <args> is automatically passed to the function pointer when the coroutine starts.
  * Returns a handle for the scheduled coroutine.
  */
-handle_t coro(uint_t ms, void (*coroutine)(void *), void *args);
+chandle_t coro(uint_t ms, void (*coroutine)(void *), void *args);
 
 /** Attempts to cancel the scheduled coroutine with the given handle. */
-bool_t cancel(handle_t handle);
+bool_t cancel(chandle_t handle);
 
 /** Processes coroutines. */
 void async();

@@ -10,8 +10,15 @@
 /** The return instruction in machine code. */
 #define RET 0xC3
 
-/** Dynamically executes the given string as assembled machine code. */
-void exec(string_t code);
+/** A handle representing an executing process.  */
+typedef uint_t phandle_t;
+
+/**
+ * Dynamically executes the given string as assembled machine code.
+ * This allocates a page of memory for the process to enable virtual addressing.
+ * Returns a handle for the executing process.
+ */
+phandle_t exec(string_t code);
 
 /**
  * Dynamically executes the given string as a shell-like command script.

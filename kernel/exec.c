@@ -6,10 +6,15 @@
 #include "lib.h"
 #include "assembly.h"
 
-/** Dynamically executes the given string as assembled machine code. */
-void exec(string_t code) {
+/**
+ * Dynamically executes the given string as assembled machine code.
+ * This allocates a page of memory for the process to enable virtual addressing.
+ * Returns a handle for the executing process.
+ */
+phandle_t exec(string_t code) {
     assert(code != NULL, "exec() - code was NULL!");
-    call(code);
+    // TODO
+    return 0;
 }
 
 /**

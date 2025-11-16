@@ -9,7 +9,6 @@
 #include "types.h"
 #include "string.h"
 #include "lib.h"
-#include "buffer.h"
 #include "assembly.h"
 #include "interrupt.h"
 #include "init.h"

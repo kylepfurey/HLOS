@@ -16,7 +16,6 @@ add_executable(hlos
         kernel/assembly.h
         kernel/beep.c
         kernel/beep.h
-        kernel/buffer.h
         kernel/event.c
         kernel/event.h
         kernel/exec.c

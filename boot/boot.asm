@@ -33,7 +33,7 @@ init_stack16:
 ; Loads the kernel from disk
 load_kernel:
 	mov ah, 0x2						; Set BIOS read sectors function
-	mov al, 35						; Set number of sectors (kernel size / 512 rounded up)
+	mov al, 36						; Set number of sectors (kernel size / 512 rounded up)
 	mov ch, 0x0						; Set cylinder 0
 	mov cl, 0x2						; Set sector after bootloader
 	mov dh, 0x0						; Set head 0
@@ -209,7 +209,6 @@ remap_pic:
 	out 0xA1, al					; Write to the slave PIC's mask
 	pop ax							; Push the master PIC's mask from the stack
 	out 0x21, al					; Write to the master PIC's mask
-	sti								; Enable interrupts
 	jmp init_floats					; Initialize floating-point operations
 
 

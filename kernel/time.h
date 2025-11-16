@@ -35,7 +35,7 @@
 #define CMOS_READ_PORT 0x71
 
 /** Converts a binary-coded decimal value to a regular binary value. */
-#define BCD(bcd) (((bcd >> 4) * 10) + (bcd & 0xF))
+#define BCD(bcd) ((((bcd) >> 4) * 10) + ((bcd) & 0xF))
 
 /** CMOS clock registers. */
 typedef enum CMOS_register {

@@ -39,4 +39,9 @@ extern void timer_interrupt();
 /** The callback for the keyboard interrupt. */
 extern void keyboard_interrupt();
 
+// HEAP
+
+/** Enables memory paging and virtual addressing. */
+extern void enable_paging();
+
 #endif // HLOS_ASSEMBLY_H

@@ -15,9 +15,11 @@ global in							; byte_t in(ushort_t port)
 global out							; void out(ushort_t port, byte_t num)
 global in2							; ushort_t in2(ushort_t port)
 global out2							; void out2(ushort_t port, ushort_t num)
-global call							; void call(void *addr)
+global call							; void call(const void *addr)
 global timer_interrupt				; void timer_interrupt()
 global keyboard_interrupt			; void keyboard_interrupt()
+global enable_paging				; void enable_paging()
+global invlpg                       ; void invlpg(const void *addr)
 
 
 ; Declare external functions
@@ -27,6 +29,7 @@ extern key							; void key()
 
 ; Pauses the CPU
 hlt:
+	sti								; Enable interrupts
 	hlt								; Halt CPU
 	ret								; Exit function
 
@@ -132,3 +135,18 @@ keyboard_interrupt:
 	pop ds							; Pop data segment from the stack
 	popad							; Pop 32-bit registers from the stack
 	iret							; Exit interrupt
+
+
+; HEAP
+
+
+; Enables memory paging and virtual addressing
+enable_paging:
+	cli								; Disable interrupts
+	mov eax, 0x10000				; Set address of page directory (address must match linker)
+	mov cr3, eax					; Write to control register 3
+	mov eax, cr0					; Read from control register 0
+	or eax, 0x80000000				; Enable the paging flag
+	mov cr0, eax					; Write to control register 0
+	sti								; Enable interrupts
+	ret								; Exit function

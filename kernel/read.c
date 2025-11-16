@@ -45,7 +45,7 @@ volatile keyboard_t keyboard = {0};
  * The maximum string length is min(<len>, MAX_INPUT_LEN).
  * The returned string is reused for all conversions.
  */
-string_t read(ushort_t len, bool_t ctrl_chars, string_t start) {
+string_t read(uint_t len, bool_t ctrl_chars, string_t start) {
     static char_t buffer[MAX_INPUT_LEN] = {0};
     char_t *current = buffer;
     char_t *end = buffer;
@@ -56,6 +56,7 @@ string_t read(ushort_t len, bool_t ctrl_chars, string_t start) {
     byte_t startrow = VGA.row;
     uint_t blinktime = time() + 500;
     bool_t blinking = false;
+    bool_t insert = true;
     if (start != NULL) {
         uint_t startlen = strlen(start);
         assert(startlen < min(len, MAX_INPUT_LEN), "read() - start length > len!");
@@ -92,14 +93,26 @@ string_t read(ushort_t len, bool_t ctrl_chars, string_t start) {
                         app = 1;
                         break;
                 }
-                if (end - buffer >= min(len, MAX_INPUT_LEN) - 1 ||
-                    size + app >= VGA_SIZE) {
-                    continue;
+                if (insert) {
+                    if (end - buffer >= min(len, MAX_INPUT_LEN) - 1 ||
+                        size + app >= VGA_SIZE) {
+                        continue;
+                    }
+                    copy(current + 1, current, end - current);
+                    *current++ = c;
+                    ++end;
+                } else if (current != end) {
+                    *current++ = c;
+                } else {
+                    if (end - buffer >= min(len, MAX_INPUT_LEN) - 1 ||
+                        size + app >= VGA_SIZE) {
+                        continue;
+                    }
+                    *current++ = c;
+                    ++end;
                 }
-                copy(current + 1, current, end - current);
-                *current++ = c;
-                ++end;
             } else {
+                bool_t ctrl = (key.flags & KEY_FLAGS_CTRL) != 0;
                 char_t first;
                 byte_t targetcol;
                 byte_t targetrow;
@@ -108,6 +121,9 @@ string_t read(ushort_t len, bool_t ctrl_chars, string_t start) {
                 uint_t count;
                 uint_t index;
                 switch (key.code) {
+                    case SCANCODE_INSERT:
+                        insert = !insert;
+                        break;
                     case SCANCODE_BACKSPACE:
                         if (current == buffer) {
                             break;
@@ -118,7 +134,7 @@ string_t read(ushort_t len, bool_t ctrl_chars, string_t start) {
                                 break;
                             }
                             c = *(current - 1);
-                            if ((key.flags & KEY_FLAGS_CTRL) != 0 && first != '\n' &&
+                            if (ctrl && first != '\n' &&
                                 (c == '\n' ||
                                  isletter(c) != isletter(first) ||
                                  isnumber(c) != isnumber(first) ||
@@ -128,7 +144,7 @@ string_t read(ushort_t len, bool_t ctrl_chars, string_t start) {
                             --current;
                             copy(current, current + 1, end - current);
                             --end;
-                        } while ((key.flags & KEY_FLAGS_CTRL) != 0 &&
+                        } while (ctrl &&
                                  (first != '\n' || c != '\n') &&
                                  isletter(c) == isletter(first) &&
                                  isnumber(c) == isnumber(first) &&
@@ -141,7 +157,7 @@ string_t read(ushort_t len, bool_t ctrl_chars, string_t start) {
                                 break;
                             }
                             c = *current;
-                            if ((key.flags & KEY_FLAGS_CTRL) != 0 && first != '\n' &&
+                            if (ctrl && first != '\n' &&
                                 (c == '\n' ||
                                  isletter(c) != isletter(first) ||
                                  isnumber(c) != isnumber(first) ||
@@ -149,7 +165,7 @@ string_t read(ushort_t len, bool_t ctrl_chars, string_t start) {
                                 break;
                             }
                             ++current;
-                        } while ((key.flags & KEY_FLAGS_CTRL) != 0 &&
+                        } while (ctrl &&
                                  (first != '\n' || c != '\n') &&
                                  isletter(c) == isletter(first) &&
                                  isnumber(c) == isnumber(first) &&
@@ -162,7 +178,7 @@ string_t read(ushort_t len, bool_t ctrl_chars, string_t start) {
                                 break;
                             }
                             c = *current;
-                            if ((key.flags & KEY_FLAGS_CTRL) != 0 && first != '\n' &&
+                            if (ctrl && first != '\n' &&
                                 (c == '\n' ||
                                  isletter(c) != isletter(first) ||
                                  isnumber(c) != isnumber(first) ||
@@ -171,7 +187,7 @@ string_t read(ushort_t len, bool_t ctrl_chars, string_t start) {
                             }
                             copy(current, current + 1, end - current);
                             --end;
-                        } while ((key.flags & KEY_FLAGS_CTRL) != 0 &&
+                        } while (ctrl &&
                                  (first != '\n' || c != '\n') &&
                                  isletter(c) == isletter(first) &&
                                  isnumber(c) == isnumber(first) &&
@@ -187,7 +203,7 @@ string_t read(ushort_t len, bool_t ctrl_chars, string_t start) {
                                 break;
                             }
                             c = *(current - 1);
-                            if ((key.flags & KEY_FLAGS_CTRL) != 0 && first != '\n' &&
+                            if (ctrl && first != '\n' &&
                                 (c == '\n' ||
                                  isletter(c) != isletter(first) ||
                                  isnumber(c) != isnumber(first) ||
@@ -195,14 +211,14 @@ string_t read(ushort_t len, bool_t ctrl_chars, string_t start) {
                                 break;
                             }
                             --current;
-                        } while ((key.flags & KEY_FLAGS_CTRL) != 0 &&
+                        } while (ctrl &&
                                  (first != '\n' || c != '\n') &&
                                  isletter(c) == isletter(first) &&
                                  isnumber(c) == isnumber(first) &&
                                  isspace(c) == isspace(first));
                         break;
                     case SCANCODE_UP:
-                        if (VGA.row == 0 || (key.flags & KEY_FLAGS_CTRL) != 0) {
+                        if (VGA.row == 0) {
                             current = buffer;
                             break;
                         }
@@ -214,7 +230,7 @@ string_t read(ushort_t len, bool_t ctrl_chars, string_t start) {
                         index = 0;
                         for (uint_t i = 0; i < count; ++i) {
                             if (row == targetrow) {
-                                if (col <= targetcol) {
+                                if (col <= targetcol || ctrl) {
                                     index = i;
                                 } else {
                                     break;
@@ -244,7 +260,7 @@ string_t read(ushort_t len, bool_t ctrl_chars, string_t start) {
                         current = buffer + index;
                         break;
                     case SCANCODE_DOWN:
-                        if (VGA.row == VGA_HEIGHT - 1 || (key.flags & KEY_FLAGS_CTRL) != 0) {
+                        if (VGA.row == VGA_HEIGHT - 1) {
                             current = end;
                             break;
                         }
@@ -256,7 +272,7 @@ string_t read(ushort_t len, bool_t ctrl_chars, string_t start) {
                         index = count;
                         for (uint_t i = 0; i < count; ++i) {
                             if (row == targetrow) {
-                                if (col <= targetcol) {
+                                if (col <= targetcol || ctrl) {
                                     index = i;
                                 } else {
                                     break;
