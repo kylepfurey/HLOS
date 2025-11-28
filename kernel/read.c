@@ -445,7 +445,7 @@ void key() {
     bool_t pressed = (code & SCANCODE_RELEASED) == 0;
     code &= ~SCANCODE_RELEASED;
     volatile key_state_t *state = &keyboard.queue[keyboard.index];
-    uint8_t flags = state->flags;
+    byte_t flags = state->flags;
     if (extended) {
         extended = false;
         if ((flags & KEY_FLAGS_NUMLOCK) == 0) {

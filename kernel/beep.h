@@ -7,13 +7,13 @@
 
 #include "types.h"
 
-/** Programmable Interval Timer channel 2 (audio). */
+/** Programmable Interval Timer channel 2 (audio) port. */
 #define PIT_CHANNEL2_PORT 0x42
 
-/** The port for the audio speaker. */
+/** Default audio speaker port. */
 #define SPEAKER_PORT 0x61
 
-/** Settings for a square wave sound. */
+/** Square wave sound setting. */
 #define SQUARE_WAVE_NUM 0xB6
 
 /** Audio speaker flags. */
