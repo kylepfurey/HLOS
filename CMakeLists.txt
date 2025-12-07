@@ -18,8 +18,6 @@ add_executable(hlos
         kernel/beep.h
         kernel/event.c
         kernel/event.h
-        kernel/exec.c
-        kernel/exec.h
         kernel/extern.h
         kernel/file.c
         kernel/file.h
@@ -39,12 +37,9 @@ add_executable(hlos
         kernel/read.h
         kernel/rng.c
         kernel/rng.h
-        kernel/socket.c
-        kernel/socket.h
         kernel/string.c
         kernel/string.h
-        kernel/thread.c
-        kernel/thread.h
         kernel/time.c
         kernel/time.h
-        kernel/types.h)
+        kernel/types.h
+)

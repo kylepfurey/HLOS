@@ -78,24 +78,25 @@ string_t read(uint_t len, bool_t ctrl_chars, string_t start) {
             if (c != '\0') {
                 if (c == '\n' && (key.flags & KEY_FLAGS_SHIFT) == 0) {
                     break;
-                } else if (!ctrl_chars && (c == '\t' || c == '\n')) {
+                } else if ((!ctrl_chars && (c == '\t' || c == '\n')) ||
+                           (key.flags & KEY_FLAGS_CTRL) != 0) {
                     continue;
                 }
-                uint_t app;
+                uint_t append;
                 switch (c) {
                     case '\t':
-                        app = TAB_WIDTH - (VGA.column % TAB_WIDTH);
+                        append = TAB_WIDTH - (VGA.column % TAB_WIDTH);
                         break;
                     case '\n':
-                        app = VGA_WIDTH - VGA.column;
+                        append = VGA_WIDTH - VGA.column;
                         break;
                     default:
-                        app = 1;
+                        append = 1;
                         break;
                 }
                 if (insert) {
                     if (end - buffer >= min(len, MAX_INPUT_LEN) - 1 ||
-                        size + app >= VGA_SIZE) {
+                        size + append >= VGA_SIZE) {
                         continue;
                     }
                     copy(current + 1, current, end - current);
@@ -105,7 +106,7 @@ string_t read(uint_t len, bool_t ctrl_chars, string_t start) {
                     *current++ = c;
                 } else {
                     if (end - buffer >= min(len, MAX_INPUT_LEN) - 1 ||
-                        size + app >= VGA_SIZE) {
+                        size + append >= VGA_SIZE) {
                         continue;
                     }
                     *current++ = c;
@@ -313,6 +314,7 @@ string_t read(uint_t len, bool_t ctrl_chars, string_t start) {
                         break;
                 }
             }
+            *end = '\0';
         render:
             uint_t begin = startcol + startrow * VGA_WIDTH;
             for (uint_t i = begin; i < min((uint_t) (begin + size), VGA_SIZE); ++i) {

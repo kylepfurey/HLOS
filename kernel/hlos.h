@@ -19,9 +19,6 @@
 #include "file.h"
 #include "malloc.h"
 #include "event.h"
-#include "thread.h"
 #include "beep.h"
-#include "socket.h"
-#include "exec.h"
 
 #endif // HLOS_H

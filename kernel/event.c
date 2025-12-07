@@ -34,12 +34,12 @@ void invoke(uint_t index, void *args) {
  * <args> is automatically passed to the function pointer when the coroutine starts.
  * Returns a handle for the scheduled coroutine.
  */
-chandle_t coro(uint_t ms, void (*coroutine)(void *), void *args) {
+handle_t coro(uint_t ms, void (*coroutine)(void *), void *args) {
     assert(coroutine != NULL, "coro() - coroutine was NULL!");
     uint_t schedule = time() + ms;
     cli();
     volatile coroutine_t *coro = NULL;
-    chandle_t handle;
+    handle_t handle;
     for (uint_t i = 0; i < MAX_COROUTINES; ++i) {
         if (coroutines[i].handle % MAX_COROUTINES != i) {
             coroutines[i].handle = i;
@@ -59,7 +59,7 @@ chandle_t coro(uint_t ms, void (*coroutine)(void *), void *args) {
 }
 
 /** Attempts to cancel the scheduled coroutine with the given handle. */
-bool_t cancel(chandle_t handle) {
+bool_t cancel(handle_t handle) {
     cli();
     volatile coroutine_t *coro = &coroutines[handle % MAX_COROUTINES];
     bool_t result;
