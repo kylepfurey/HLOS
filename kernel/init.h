@@ -37,7 +37,13 @@ extern byte_t __page_table_start;
 /** The byte after the end of the memory page table. */
 extern byte_t __page_table_end;
 
-/** The first byte of the heap. */
+/** The first byte of the kernel heap memory. */
+extern byte_t __kernel_heap_start;
+
+/** The byte after the end of the kernel heap memory. */
+extern byte_t __kernel_heap_end;
+
+/** The first byte of the user heap memory. */
 extern byte_t __heap_start;
 
 /** Initializes the kernel. */

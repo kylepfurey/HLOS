@@ -18,13 +18,15 @@ global out2							; void out2(ushort_t port, ushort_t num)
 global call							; void call(const void *addr)
 global timer_interrupt				; void timer_interrupt()
 global keyboard_interrupt			; void keyboard_interrupt()
+global page_fault_interrupt		 	; void page_fault_interrupt()
 global enable_paging				; void enable_paging()
-global invlpg                       ; void invlpg(const void *addr)
+global invlpg						; void invlpg(const void *addr)
 
 
 ; Declare external functions
 extern tick							; void tick()
 extern key							; void key()
+extern crash						; void crash(uint_t err)
 
 
 ; Pauses the CPU
@@ -137,6 +139,25 @@ keyboard_interrupt:
 	iret							; Exit interrupt
 
 
+; The callback for a page fault interrupt
+page_fault_interrupt:
+	pushad							; Push 32-bit registers to the stack
+	push ds							; Push data segment selector to the stack
+	push es							; Push extra segment selector to the stack
+	push fs							; Push general purpose segment selector to the stack
+	push gs							; Push general purpose segment selector to the stack
+	push dword [esp + 20]			; Push <err> to the stack
+	call crash						; Call crash() in C
+	add esp, 4						; Pop <err> from the stack
+	pop gs							; Pop general purpose segment selector from the stack
+	pop fs							; Pop general purpose segment selector from the stack
+	pop es							; Pop extra segment selector from the stack
+	pop ds							; Pop data segment from the stack
+	popad							; Pop 32-bit registers from the stack
+	add esp, 4						; Pop the error code from the stack
+	iret							; Exit interrupt
+
+
 ; HEAP
 
 
@@ -149,4 +170,14 @@ enable_paging:
 	or eax, 0x80000000				; Enable the paging flag
 	mov cr0, eax					; Write to control register 0
 	sti								; Enable interrupts
+	ret								; Exit function
+
+
+; Forces the CPU to refresh a memory page
+invlpg:
+	push ebp						; Push base pointer to the stack
+	mov ebp, esp					; Store the stack pointer
+	mov eax, [ebp+8]				; Store <addr>
+	invlpg [eax]					; Invalidate the page entry
+	pop ebp							; Pop base pointer from the stack
 	ret								; Exit function

@@ -7,11 +7,14 @@
 
 #include "types.h"
 
+/** The alignment of dynamically aligned memory. */
+#define MALLOC_ALIGN 4
+
 /** The size of a memory page. */
 #define PAGE_SIZE 4096
 
 /** Builds a new Page Entry using the given memory page address and flags. */
-#define NEW_PAGE_ENTRY(addr, flags) ((page_entry_t)(((addr) & 0xFFFFF000) | (flags)))
+#define NEW_PAGE_ENTRY(addr, flags) ((page_entry_t)((((uint_t)addr) & 0xFFFFF000) | (flags)))
 
 /** Retrieves the set flags of a memory page from the given Page Entry. */
 #define PAGE_ENTRY_FLAGS(entry) (((uint_t)entry) & 0xFFF)
@@ -24,6 +27,9 @@
 
 /** Returns the index of a Page Table Entry's address. */
 #define PAGE_TABLE_INDEX(addr) ((((uint_t)addr) >> 12) & 0x3FF)
+
+/** The Interrupt Descriptor Table entry for page faults. */
+#define PAGE_FAULT 14
 
 /** Page Directory Entry flags. */
 typedef enum PDE_flags {
@@ -39,6 +45,7 @@ typedef enum PDE_flags {
     PDE_FLAGS_CUSTOM2 = 512,
     PDE_FLAGS_CUSTOM3 = 1024,
     PDE_FLAGS_CUSTOM4 = 2048,
+    PDE_FLAGS_DEFAULT = PDE_FLAGS_PRESENT | PDE_FLAGS_WRITABLE | PDE_FLAGS_USER_MODE,
     PDE_SIZE = 1024,
 } PDE_flags_t;
 
@@ -56,6 +63,7 @@ typedef enum PTE_flags {
     PTE_FLAGS_CUSTOM1 = 512,
     PTE_FLAGS_CUSTOM2 = 1024,
     PTE_FLAGS_CUSTOM3 = 2048,
+    PTE_FLAGS_DEFAULT = PTE_FLAGS_PRESENT | PTE_FLAGS_WRITABLE | PTE_FLAGS_USER_MODE,
     PTE_SIZE = 1024,
 } PTE_flags_t;
 
@@ -76,20 +84,32 @@ typedef struct page_table {
     page_entry_t entries[PTE_SIZE];
 } page_table_t;
 
+/** A linked list of all allocated memory pages. */
+typedef struct page {
+    /** The address of the next memory page. */
+    struct page *next;
+} page_t;
+
+/** A linked list of allocated memory blocks. */
+typedef struct block {
+    /** The size of this memory block. */
+    uint_t size;
+
+    /** The address of the next memory block. */
+    struct block *next;
+} block_t;
+
 /** The global Page Directory. */
 extern volatile page_directory_t *page_directory;
 
 /** The global Page Table. */
 extern volatile page_table_t *page_table;
 
-/**
- * Maps the given physical memory address to the given virtual memory address with the given flags.
- * Returns whether memory was successfully mapped.
- */
-bool_t map(void *src, void *dest, PTE_flags_t flags);
+/** The next free memory page. */
+extern page_t *free_page;
 
-/** Unmaps the given virtual memory address. */
-void unmap(void *dest);
+/** The next free memory block. */
+extern block_t *free_block;
 
 /**
  * Allocates the given number of bytes on the heap.
@@ -106,5 +126,23 @@ void *realloc(void *mem, uint_t size);
 
 /** Releases the given memory from the heap. */
 void free(void *mem);
+
+/** Allocates a new page of memory. */
+page_t *pagealloc();
+
+/** Deallocates a page of memory. */
+void pagefree(page_t *page);
+
+/**
+ * Maps the given physical memory address to the given virtual memory address with the given flags.
+ * Returns whether memory was successfully mapped.
+ */
+bool_t map(void *phys, void *virt, PDE_flags_t dir_flags, PTE_flags_t table_flags);
+
+/** Unmaps the given virtual memory address. */
+void unmap(void *virt);
+
+/** Asserts on a page fault. */
+void crash(uint_t err);
 
 #endif // HLOS_MALLOC_H

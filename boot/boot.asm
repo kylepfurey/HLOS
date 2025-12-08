@@ -33,7 +33,7 @@ init_stack16:
 ; Loads the kernel from disk
 load_kernel:
 	mov ah, 0x2						; Set BIOS read sectors function
-	mov al, 41						; Set number of sectors (kernel size / 512 rounded up)
+	mov al, 45						; Set number of sectors (kernel size / 512 rounded up)
 	mov ch, 0x0						; Set cylinder 0
 	mov cl, 0x2						; Set sector after bootloader
 	mov dh, 0x0						; Set head 0

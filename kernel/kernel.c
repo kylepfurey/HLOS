@@ -11,6 +11,8 @@ typedef enum selection {
     SELECTION_TEXTEDIT,
     SELECTION_SHUTDOWN,
     SELECTION_FILES_OPEN,
+    SELECTION_FILES_SAVE,
+    SELECTION_FILES_DELETE,
     SELECTION_FILES_FORMAT,
     SELECTION_FILES_QUIT,
 } selection_t;
@@ -25,7 +27,7 @@ selection_t selection();
 void clock(void *);
 
 /** Text-editing sequence. */
-string_t textedit(char_t *text);
+string_t textedit(string_t text);
 
 /** The entry point of the HLOS kernel. */
 void kernel_main() {
@@ -33,6 +35,8 @@ void kernel_main() {
     sleep(1000);
     opening();
     clock(NULL);
+    char_t text[VGA_SIZE];
+    strcopy(text, "int main() {\n\treturn 0;\n}\n");
     while (true) {
         switch (selection()) {
             default:
@@ -42,9 +46,10 @@ void kernel_main() {
             case SELECTION_FILES_FORMAT:
                 break;
             case SELECTION_TEXTEDIT:
-                string_t text = textedit(NULL);
+                strcopy(text, textedit(text));
                 break;
             case SELECTION_SHUTDOWN:
+                color(VGA_COLOR_GREEN, VGA_COLOR_BLACK);
                 print("\n\nGoodbye!");
                 shutdown(1000);
                 break;
@@ -55,6 +60,7 @@ void kernel_main() {
 /** Opening sequence. */
 void opening() {
     clear();
+    beep();
     color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
     print("\n\t\t");
     string_t welcome = "Welcome to the\n\n";
@@ -117,7 +123,9 @@ restart:
         clear();
         color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
         print(datestr(date(), false));
+        color(VGA_COLOR_BROWN, VGA_COLOR_BLACK);
         print("\n\nHLOS\n\n");
+        color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
         print("1. FILES\n");
         print("2. TEXTEDIT\n");
         print("3. SHUTDOWN\n");
@@ -130,15 +138,23 @@ restart:
                 clear();
                 color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
                 print(datestr(date(), false));
-                print("\n\nHLOS - FILES\n\n");
+                color(VGA_COLOR_BROWN, VGA_COLOR_BLACK);
+                print("\n\nHLOS/FILES\n\n");
+                color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
                 print("1. OPEN\n");
-                print("2. FORMAT\n");
-                print("3. QUIT\n");
+                print("2. SAVE\n");
+                print("3. DELETE\n");
+                print("4. FORMAT\n");
+                print("5. QUIT\n");
                 print("\n> ");
                 select = (char_t *) read(7, false, NULL);
                 strlower(select);
                 if (strcompare(select, "open") == EQUAL_TO) {
                     return SELECTION_FILES_OPEN;
+                } else if (strcompare(select, "save") == EQUAL_TO) {
+                    return SELECTION_FILES_SAVE;
+                } else if (strcompare(select, "delete") == EQUAL_TO) {
+                    return SELECTION_FILES_DELETE;
                 } else if (strcompare(select, "format") == EQUAL_TO) {
                     return SELECTION_FILES_FORMAT;
                 } else if (strcompare(select, "quit") == EQUAL_TO) {
@@ -151,6 +167,10 @@ restart:
                                 break;
                             case SELECTION_FILES_OPEN:
                                 return SELECTION_FILES_OPEN;
+                            case SELECTION_FILES_SAVE:
+                                return SELECTION_FILES_SAVE;
+                            case SELECTION_FILES_DELETE:
+                                return SELECTION_FILES_DELETE;
                             case SELECTION_FILES_FORMAT:
                                 return SELECTION_FILES_FORMAT;
                             case SELECTION_FILES_QUIT:
@@ -197,18 +217,20 @@ void clock(void *) {
 }
 
 /** Text-editing sequence. */
-string_t textedit(char_t *text) {
+string_t textedit(string_t text) {
     clear();
     color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
     print(datestr(date(), false));
-    print("\n\nHLOS - TEXTEDIT\nCtrl+Enter to exit\n\n");
+    color(VGA_COLOR_BROWN, VGA_COLOR_BLACK);
+    print("\n\nHLOS/TEXTEDIT\n");
+    color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
+    print("Ctrl+Enter to exit\n\n");
     uint_t row = VGA.row;
     color(VGA_COLOR_GREEN, VGA_COLOR_BLACK); // Matrix style
-    text = text == NULL ? (char_t *) "int main() {\n\treturn 0;\n}\n" : text;
     while (true) {
         VGA.column = 0;
         VGA.row = row;
-        text = (char_t *) read(VGA_SIZE - VGA_POS - 1, true, text);
+        text = (char_t *) read(VGA_SIZE, true, text);
         key_state_t key;
         if ((keyboard.queue[keyboard.index].flags & KEY_FLAGS_CTRL) != 0) {
             return text;

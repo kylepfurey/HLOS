@@ -26,9 +26,24 @@ static void keyboard_init() {
 
 /** Initializes memory paging, virtual addressing, and the heap. */
 static void heap_init() {
-    set(&__page_directory_start, 0, &__page_table_end - &__page_directory_start);
-    // TODO: Let the kernel RUN again!
-    //enable_paging();
+    set(&__page_directory_start, 0, ((byte_t *) &__page_table_end) - ((byte_t *) &__page_directory_start));
+    for (byte_t *page = &__kernel_heap_start; page < &__kernel_heap_end; page += PAGE_SIZE) {
+        pagefree((page_t *) page);
+    }
+    for (byte_t *page = &__kernel_start; page < &__kernel_heap_end; page += PAGE_SIZE) {
+        map(page, page,
+            PDE_FLAGS_PRESENT | PDE_FLAGS_WRITABLE,
+            PTE_FLAGS_PRESENT | PDE_FLAGS_WRITABLE
+        );
+    }
+    for (byte_t *page = &__kernel_heap_start; page < &__kernel_heap_end; page += PAGE_SIZE) {
+        pagefree((page_t *) page);
+    }
+    free_block = (block_t *) &__kernel_heap_start;
+    free_block->size = (uint_t) ((&__kernel_heap_end - &__kernel_heap_start) - sizeof(block_t));
+    free_block->next = NULL;
+    IDT_bind(PAGE_FAULT, page_fault_interrupt, IDT_KERNEL_SELECTOR, IDT_KERNEL_FLAGS);
+    enable_paging();
 }
 
 /** Initializes the kernel. */

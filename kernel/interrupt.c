@@ -5,6 +5,7 @@
 #include "interrupt.h"
 #include "lib.h"
 #include "assembly.h"
+#include "malloc.h"
 
 /** The Interrupt Descriptor Table. */
 IDT_t IDT = {

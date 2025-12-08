@@ -4,6 +4,7 @@
 
 #include "print.h"
 #include "lib.h"
+#include "malloc.h"
 
 /** The Video Graphics Array. */
 VGA_t VGA = {
@@ -24,7 +25,7 @@ void print(string_t msg) {
             VGA.column = 0;
         } else if (*msg == '\t') {
             byte_t tab = TAB_WIDTH - (VGA.column % TAB_WIDTH);
-            for (byte_t i = 0; i < tab; ++i) {
+            for (uint_t i = 0; i < tab; ++i) {
                 printchar(' ');
             }
         } else {

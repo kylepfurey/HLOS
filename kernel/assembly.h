@@ -39,9 +39,15 @@ extern void timer_interrupt();
 /** The callback for the keyboard interrupt. */
 extern void keyboard_interrupt();
 
+/** The callback for a page fault interrupt. */
+extern void page_fault_interrupt();
+
 // HEAP
 
 /** Enables memory paging and virtual addressing. */
 extern void enable_paging();
+
+/** Forces the CPU to refresh a memory page. */
+extern void invlpg(const void *addr);
 
 #endif // HLOS_ASSEMBLY_H
