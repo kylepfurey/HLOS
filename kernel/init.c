@@ -8,6 +8,8 @@
 #include "interrupt.h"
 #include "time.h"
 #include "malloc.h"
+#include "file.h"
+#include "print.h"
 
 /** Initializes the Programmable Interval Timer. */
 static void PIT_init() {
@@ -30,10 +32,28 @@ static void heap_init() {
     for (byte_t *page = &__kernel_heap_start; page < &__kernel_heap_end; page += PAGE_SIZE) {
         pagefree((page_t *) page);
     }
-    for (byte_t *page = &__kernel_start; page < &__kernel_heap_end; page += PAGE_SIZE) {
-        map(page, page,
+    for (byte_t *page = &__stack_end; page < &__stack_start; page += PAGE_SIZE) {
+        map(
+            page,
+            page,
             PDE_FLAGS_PRESENT | PDE_FLAGS_WRITABLE,
-            PTE_FLAGS_PRESENT | PDE_FLAGS_WRITABLE
+            PTE_FLAGS_PRESENT | PTE_FLAGS_WRITABLE
+        );
+    }
+    for (byte_t *page = &__kernel_start; page < &__kernel_end; page += PAGE_SIZE) {
+        map(
+            page,
+            page,
+            PDE_FLAGS_PRESENT | PDE_FLAGS_WRITABLE,
+            PTE_FLAGS_PRESENT | PTE_FLAGS_WRITABLE
+        );
+    }
+    for (byte_t *page = &__kernel_heap_start; page < &__kernel_heap_end; page += PAGE_SIZE) {
+        map(
+            page,
+            page,
+            PDE_FLAGS_PRESENT | PDE_FLAGS_WRITABLE,
+            PTE_FLAGS_PRESENT | PTE_FLAGS_WRITABLE
         );
     }
     for (byte_t *page = &__kernel_heap_start; page < &__kernel_heap_end; page += PAGE_SIZE) {
@@ -46,10 +66,16 @@ static void heap_init() {
     enable_paging();
 }
 
+/** Mounts FAT32. */
+static void FAT32_init() {
+    mount(ATA_PRIMARY_PORT, ATA_MASTER_DRIVE, FAT32_START);
+}
+
 /** Initializes the kernel. */
 void init() {
     set(&__bss_start, 0, &__bss_end - &__bss_start);
     PIT_init();
     keyboard_init();
     heap_init();
+    FAT32_init();
 }

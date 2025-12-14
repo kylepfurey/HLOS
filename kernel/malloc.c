@@ -58,7 +58,9 @@ void *malloc(uint_t size) {
         if (page == NULL) {
             return NULL;
         }
-        map(page, page,
+        map(
+            page,
+            page,
             PDE_FLAGS_PRESENT | PDE_FLAGS_WRITABLE | PDE_FLAGS_USER_MODE,
             PTE_FLAGS_PRESENT | PTE_FLAGS_WRITABLE | PTE_FLAGS_USER_MODE
         );
@@ -162,8 +164,9 @@ bool_t map(void *phys, void *virt, PDE_flags_t dir_flags, PTE_flags_t table_flag
     } else {
         table = (page_table_t *) PAGE_ENTRY_ADDRESS(page_directory->entries[directory_index]);
     }
-    assert((table->entries[table_index] & PTE_FLAGS_PRESENT) == 0,
-           "map() - Attempting to overwrite an existing page!"
+    assert(
+        (table->entries[table_index] & PTE_FLAGS_PRESENT) == 0,
+        "map() - Attempting to overwrite an existing page!"
     );
     table->entries[table_index] = NEW_PAGE_ENTRY(phys, table_flags);
     invlpg(virt);
@@ -175,12 +178,14 @@ void unmap(void *virt) {
     assert(virt != NULL, "unmap() - virt was NULL!");
     uint_t directory_index = PAGE_DIRECTORY_INDEX(virt);
     uint_t table_index = PAGE_TABLE_INDEX(virt);
-    assert((page_directory->entries[directory_index] & PDE_FLAGS_PRESENT) != 0,
-           "unmap() - Attempting to free an invalid page!"
+    assert(
+        (page_directory->entries[directory_index] & PDE_FLAGS_PRESENT) != 0,
+        "unmap() - Attempting to free an invalid page!"
     );
     page_table_t *table = (page_table_t *) PAGE_ENTRY_ADDRESS(page_directory->entries[directory_index]);
-    assert((table->entries[table_index] & PTE_FLAGS_PRESENT) != 0,
-           "unmap() - Attempting to free an invalid page!"
+    assert(
+        (table->entries[table_index] & PTE_FLAGS_PRESENT) != 0,
+        "unmap() - Attempting to free an invalid page!"
     );
     if ((table->entries[table_index] & PTE_FLAGS_PRESENT) != 0) {
         pagefree((page_t *) PAGE_ENTRY_ADDRESS(table->entries[table_index]));
@@ -198,5 +203,5 @@ void unmap(void *virt) {
 
 /** Asserts on a page fault. */
 void crash(uint_t err) {
-    assert(false, "Dereferencing invalid virtual address!");
+    panic("Dereferencing invalid virtual address!");
 }

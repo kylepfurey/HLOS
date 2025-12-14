@@ -68,8 +68,11 @@ echo Divide by 512 and round up. That is the number of sectors loaded.
 echo -----------------------------------------------------------------
 echo
 
-# Append kernel.bin into boot.bin
-cat "$BUILD/boot.bin" "$BUILD/kernel.bin" > "$BUILD/hlos.img"
+# Create binary blob for virtual hard drive space
+qemu-img create -f raw "$BUILD/raw.bin" 512000000 # 512 MB
+
+# Append kernel.bin and raw.bin into boot.bin
+cat "$BUILD/boot.bin" "$BUILD/kernel.bin" "$BUILD/raw.bin" > "$BUILD/hlos.img"
 
 # Boot hlos.img in QEMU
 qemu-system-i386\

@@ -8,9 +8,11 @@ OUTPUT_FORMAT("binary")					/** Output as binary */
 ENTRY(kernel_main)						/** Set kernel_main() entry point */
 
 SECTIONS {
+	__stack_end = 0x7000;				/** End of stack memory (grows downward) */
+	__stack_start = 0x7C00;				/** Start of stack memory (grows downward) */
 	__boot_start = 0x7C00;				/** Bootloader expected at 0x7C00 */
-	__boot_end = 0x7C00 + 512;
-	. = 0x1000;							/** Load kernel immediately after bootloader */
+	__boot_end = . + 512;
+	. = 0x8000;							/** Load kernel immediately after bootloader */
 	__kernel_start = .;
 	.text : { *(.text) }				/** Source code */
 	.rodata : { *(.rodata) }			/** Read-only data */
@@ -32,7 +34,7 @@ SECTIONS {
 		. = . + 0x1000;					/** Reserve 4 kilobytes */
 		__page_table_end = .;
 	}
-	. = 0x100000;						/** Reserve kernel heap after page table */
+	. = 0x12000;						/** Reserve kernel heap after page table */
 	__kernel_heap_start = .;
 	.heap (NOLOAD) : {
 		. = . + 16M;					/** Reserve 16 megabytes for the kernel heap */

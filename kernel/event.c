@@ -39,7 +39,7 @@ handle_t coro(uint_t ms, void (*coroutine)(void *), void *args) {
     uint_t schedule = time() + ms;
     cli();
     volatile coroutine_t *coro = NULL;
-    handle_t handle;
+    handle_t handle = -1;
     for (uint_t i = 0; i < MAX_COROUTINES; ++i) {
         if (coroutines[i].handle % MAX_COROUTINES != i) {
             coroutines[i].handle = i;

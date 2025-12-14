@@ -6,6 +6,7 @@
 #include "assembly.h"
 #include "read.h"
 #include "time.h"
+#include "event.h"
 
 /** Halts the kernel. */
 void pause() {
@@ -41,6 +42,9 @@ void reboot(uint_t ms) {
 /** Crashes the kernel with an error if the given condition is false. */
 void assert(bool_t cond, string_t err) {
     if (!cond) {
+        for (uint_t i = 0; i < MAX_COROUTINES; ++i) {
+            coroutines[i].callback = NULL;
+        }
         pos(0, 0);
         color(VGA_COLOR_WHITE, VGA_COLOR_RED);
         print("ASSERTION FAILED: ");

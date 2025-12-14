@@ -43,7 +43,26 @@ void kernel_main() {
                 break;
             case SELECTION_FILES_OPEN:
                 break;
+            case SELECTION_FILES_SAVE:
+                break;
+            case SELECTION_FILES_DELETE:
+                break;
             case SELECTION_FILES_FORMAT:
+                color(VGA_COLOR_LIGHT_RED, VGA_COLOR_BLACK);
+                print("\n\nFormatting FAT32 hard drive . . .");
+                format(
+                    ATA_PRIMARY_PORT,
+                    ATA_MASTER_DRIVE,
+                    FAT32_START,
+                    1,
+                    FAT32_SIZE,
+                    true
+                );
+                color(VGA_COLOR_GREEN, VGA_COLOR_BLACK);
+                print(" Formatting successful!\n\n");
+                color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
+                print("Rebooting . . .");
+                reboot(1000);
                 break;
             case SELECTION_TEXTEDIT:
                 strcopy(text, textedit(text));
@@ -130,7 +149,9 @@ restart:
         print("2. TEXTEDIT\n");
         print("3. SHUTDOWN\n");
         print("\n> ");
+        color(VGA_COLOR_YELLOW, VGA_COLOR_BLACK);
         char_t *select = (char_t *) read(9, false, NULL);
+        color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
         strlower(select);
         if (strcompare(select, "files") == EQUAL_TO) {
         files:
@@ -147,7 +168,9 @@ restart:
                 print("4. FORMAT\n");
                 print("5. QUIT\n");
                 print("\n> ");
+                color(VGA_COLOR_YELLOW, VGA_COLOR_BLACK);
                 select = (char_t *) read(7, false, NULL);
+                color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
                 strlower(select);
                 if (strcompare(select, "open") == EQUAL_TO) {
                     return SELECTION_FILES_OPEN;

@@ -7,6 +7,12 @@
 
 #include "types.h"
 
+/** The last byte of the stack. */
+extern byte_t __stack_end;
+
+/** The byte after the start of the stack. */
+extern byte_t __stack_start;
+
 /** The first byte of the bootloader. */
 extern byte_t __boot_start;
 

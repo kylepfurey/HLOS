@@ -26,19 +26,19 @@ init_stack16:
 	mov ds, ax						; Initialize data segment
 	mov es, ax						; Initialize extra segment
 	mov ss, ax						; Initialize stack segment
-	mov sp, 0x7C00					; Initialize stack pointer to origin
+	mov sp, 0x7BFF					; Initialize stack pointer to origin
 	jmp load_kernel					; Load kernel from disk
 
 
 ; Loads the kernel from disk
 load_kernel:
 	mov ah, 0x2						; Set BIOS read sectors function
-	mov al, 45						; Set number of sectors (kernel size / 512 rounded up)
+	mov al, 53						; Set number of sectors (kernel size / 512 rounded up)
 	mov ch, 0x0						; Set cylinder 0
 	mov cl, 0x2						; Set sector after bootloader
 	mov dh, 0x0						; Set head 0
 	mov dl, [boot_drive]			; Set boot drive
-	mov bx, 0x1000					; Set kernel address (address must match linker)
+	mov bx, 0x8000					; Set kernel address (address must match linker)
 	int 0x13						; Load kernel with a BIOS interrupt
 	jc disk_error					; Jump if loading fails
 	xor ax, ax						; Clear accumulator
@@ -227,9 +227,18 @@ init_floats:
 
 ; Jumps to kernel entry point
 start_kernel:
-	jmp 0x1000						; Jump to kernel_main() (address must match linker)
+	jmp 0x8000						; Jump to kernel_main() (address must match linker)
 
 
-; Boot sector
-times 510-($-$$) db 0x0				; Fill boot sector to 512 bytes
+; Partition table
+times 440-($-$$) db 0x0				; Fill boot sector to 440 bytes
+dd 0xBADA55							; Disk signature
+dw 0x0								; Reserved
+db 0x0								; Boot flag
+db 0xFF,0xFF,0xFF					; CHS start
+db 0xC								; FAT32 partition
+db 0xFF,0xFF,0xFF					; CHS end
+dd 64								; Partition location (64th sector)
+dd 1000000							; Partition size (512 megabytes)
+times 16*3 db 0x0					; Pad boot sector to 512 bytes
 dw 0xAA55							; Boot signature

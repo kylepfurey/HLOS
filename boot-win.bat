@@ -70,8 +70,11 @@ echo Divide by 512 and round up. That is the number of sectors loaded.
 echo -----------------------------------------------------------------
 echo.
 
+:: Create binary blob for virtual hard drive space
+qemu-img create -f raw "%BUILD%\raw.bin" 512000000 # 512 MB
+
 :: Append kernel.bin into boot.bin
-type "%BUILD%\boot.bin" "%BUILD%\kernel.bin" > "%BUILD%\hlos.img"
+type "%BUILD%\boot.bin" "%BUILD%\kernel.bin" "%BUILD%\raw.bin" > "%BUILD%\hlos.img"
 
 :: Boot hlos.img in QEMU
 "%PROGRAMFILES%\qemu\qemu-system-i386.exe"^

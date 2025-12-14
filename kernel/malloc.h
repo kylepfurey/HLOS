@@ -67,9 +67,7 @@ typedef enum PTE_flags {
     PTE_SIZE = 1024,
 } PTE_flags_t;
 
-/**
- * A single Page Directory Entry or Page Table Entry containing settings for a memory page and its address.
- */
+/** A single Page Directory Entry or Page Table Entry containing settings for a memory page and its address. */
 typedef uint_t page_entry_t;
 
 /** An array of each Page Directory Entry used to locate virtual memory pages in the Page Table.  */

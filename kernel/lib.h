@@ -13,6 +13,9 @@
 /** An indicator that a value was not found. */
 #define NOT_FOUND ((uint_t)-1)
 
+/** Crashes the kernel with an error. */
+#define panic(err) assert(false, err)
+
 /** Halts the kernel. */
 void pause();
 
