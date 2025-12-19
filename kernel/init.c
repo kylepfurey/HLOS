@@ -68,7 +68,19 @@ static void heap_init() {
 
 /** Mounts FAT32. */
 static void FAT32_init() {
-    mount(ATA_PRIMARY_PORT, ATA_MASTER_DRIVE, FAT32_START);
+    if (!mount(ATA_PRIMARY_PORT, ATA_MASTER_DRIVE, FAT32_START)) {
+        clear();
+        print("Formatting empty drive to FAT32 . . .");
+        format(
+            ATA_PRIMARY_PORT,
+            ATA_MASTER_DRIVE,
+            FAT32_START,
+            1,
+            FAT32_SIZE,
+            false
+        );
+        mount(ATA_PRIMARY_PORT, ATA_MASTER_DRIVE, FAT32_START);
+    }
 }
 
 /** Initializes the kernel. */

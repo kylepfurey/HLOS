@@ -6,9 +6,10 @@
 #include "lib.h"
 #include "assembly.h"
 #include "time.h"
+#include "read.h"
 
 /** Cached data for the mounted File Allocation Table (32-bit). */
-FAT32_t FAT = {0};
+FAT32_t FAT32 = {0};
 
 /**
  * Reads the file at the given path for the given size.
@@ -16,7 +17,7 @@ FAT32_t FAT = {0};
  */
 string_t fileread(string_t path, uint_t offset, uint_t size) {
     assert(path != NULL, "fileread() - path was NULL!");
-    if (!FAT.mounted) {
+    if (!FAT32.mounted) {
         return NULL;
     }
     // TODO
@@ -29,7 +30,7 @@ string_t fileread(string_t path, uint_t offset, uint_t size) {
  */
 bool_t filewrite(string_t path, string_t data) {
     assert(path != NULL, "filewrite() - path was NULL!");
-    if (!FAT.mounted) {
+    if (!FAT32.mounted) {
         return false;
     }
     // TODO
@@ -42,7 +43,7 @@ bool_t filewrite(string_t path, string_t data) {
  */
 bool_t fileappend(string_t path, string_t data) {
     assert(path != NULL, "fileappend() - path was NULL!");
-    if (!FAT.mounted) {
+    if (!FAT32.mounted) {
         return false;
     }
     // TODO
@@ -56,7 +57,7 @@ bool_t fileappend(string_t path, string_t data) {
 bool_t filemove(string_t start, string_t end) {
     assert(start != NULL, "filemove() - start was NULL!");
     assert(end != NULL, "filemove() - end was NULL!");
-    if (!FAT.mounted) {
+    if (!FAT32.mounted) {
         return false;
     }
     // TODO
@@ -66,7 +67,7 @@ bool_t filemove(string_t start, string_t end) {
 /** Deletes the file at the given path and returns whether a file was erased. */
 bool_t filedelete(string_t path) {
     assert(path != NULL, "filedelete() - path was NULL!");
-    if (!FAT.mounted) {
+    if (!FAT32.mounted) {
         return false;
     }
     // TODO
@@ -76,22 +77,17 @@ bool_t filedelete(string_t path) {
 /** Returns whether a file exists and writes its size into <size>. */
 bool_t filesize(string_t path, uint_t *size) {
     assert(path != NULL, "filesize() - path was NULL!");
-    if (!FAT.mounted) {
+    if (!FAT32.mounted) {
         return false;
     }
     // TODO
     return false;
 }
 
-/** Fills <list> with the first <size> names of each file in <dir> and returns whether it was successful. */
-bool_t filelist(string_t dir, uint_t size, char_t **list) {
+/** Fills <list> with the first <size> names of each file in <dir> and returns the number of files. */
+uint_t filelist(string_t dir, uint_t size, char_t **list) {
     assert(dir != NULL, "filelist() - dir was NULL!");
-    if (list != NULL) {
-        for (uint_t i = 0; i < size; ++i) {
-            assert(list[i] != NULL, "filelist() - list had a NULL entry!");
-        }
-    }
-    if (!FAT.mounted) {
+    if (!FAT32.mounted) {
         return false;
     }
     // TODO
@@ -100,28 +96,28 @@ bool_t filelist(string_t dir, uint_t size, char_t **list) {
 
 /** Mounts the given FAT32 partition as the current hard drive, if possible. */
 bool_t mount(ATA_port_t port, byte_t drive, uint_t start) {
-    assert(port == ATA_PRIMARY_PORT || port == ATA_SECONDARY_PORT, "mount() - port was invalid!");
-    assert(drive == ATA_MASTER_DRIVE || drive == ATA_SLAVE_DRIVE, "mount() - drive was invalid!");
     assert(sizeof(FAT32_boot_t) == SECTOR_SIZE, "mount() - FAT32_boot_t is not one sector wide!");
     assert(sizeof(FAT32_FS_t) == SECTOR_SIZE, "mount() - FAT32_FS_t structure is not one sector wide!");
+    assert(port == ATA_PRIMARY_PORT || port == ATA_SECONDARY_PORT, "mount() - port was invalid!");
+    assert(drive == ATA_MASTER_DRIVE || drive == ATA_SLAVE_DRIVE, "mount() - drive was invalid!");
     FAT32_boot_t boot = {0};
-    FAT32_FS_t fs = {0};
+    FAT32_FS_t FS = {0};
     secread(port, drive, start, 1, (char_t *) &boot);
     if (boot.boot_signature == BOOT_SIGNATURE &&
         boot.FAT_size16 == 0 &&
         boot.FAT_size32 > 0) {
     success:
-        secread(port, drive, start + boot.FS_info, 1, (char_t *) &fs);
-        if (fs.lead_signature == LEAD_SIGNATURE &&
-            fs.struct_signature == STRUCT_SIGNATURE &&
-            fs.boot_signature == BOOT_SIGNATURE) {
-            FAT.mounted = true;
-            FAT.port = port;
-            FAT.drive = drive;
-            FAT.start = start;
-            FAT.boot = boot;
-            FAT.fs = fs;
-            FAT.dir = "/";
+        secread(port, drive, start + boot.FS_info, 1, (char_t *) &FS);
+        if (FS.lead_signature == LEAD_SIGNATURE &&
+            FS.struct_signature == STRUCT_SIGNATURE &&
+            FS.boot_signature == BOOT_SIGNATURE) {
+            FAT32.mounted = true;
+            FAT32.port = port;
+            FAT32.drive = drive;
+            FAT32.start = start;
+            FAT32.boot = boot;
+            FAT32.FS = FS;
+            FAT32.dir = "";
             return true;
         }
         return false;
@@ -143,25 +139,26 @@ bool_t mount(ATA_port_t port, byte_t drive, uint_t start) {
 }
 
 /** Formats the hard drive for FAT32. */
-bool_t format(ATA_port_t port, byte_t drive, uint_t start, uint_t clus_size, uint_t part_size, bool_t force) {
-    assert(port == ATA_PRIMARY_PORT || port == ATA_SECONDARY_PORT, "format() - port was invalid!");
-    assert(drive == ATA_MASTER_DRIVE || drive == ATA_SLAVE_DRIVE, "format() - drive was invalid!");
-    assert(clus_size > 0 && (clus_size & (clus_size - 1)) == 0, "format() - clus_size is not power of 2!");
+bool_t format(ATA_port_t port, byte_t drive, uint_t start, uint_t clus_count, uint_t part_size, bool_t force) {
     assert(sizeof(FAT32_boot_t) == SECTOR_SIZE, "format() - FAT32_boot_t is not one sector wide!");
     assert(sizeof(FAT32_FS_t) == SECTOR_SIZE, "format() - FAT32_FS_t structure is not one sector wide!");
     assert(sizeof(FAT32_table_t) == SECTOR_SIZE, "format() - FAT32_table_t structure is not one sector wide!");
+    assert(port == ATA_PRIMARY_PORT || port == ATA_SECONDARY_PORT, "format() - port was invalid!");
+    assert(drive == ATA_MASTER_DRIVE || drive == ATA_SLAVE_DRIVE, "format() - drive was invalid!");
+    assert(clus_count > 0 && (clus_count & (clus_count - 1)) == 0, "format() - clus_count is not power of 2!");
+    assert(clus_count <= 64, "format() - cluster size too large for FAT32!");
     // Boot sector
     FAT32_boot_t boot = {0};
-    FAT32_FS_t fs = {0};
+    FAT32_FS_t FS = {0};
     if (!force) {
         secread(port, drive, start, 1, (char_t *) &boot);
         if (boot.boot_signature == BOOT_SIGNATURE &&
             boot.FAT_size16 == 0 &&
             boot.FAT_size32 > 0) {
-            secread(port, drive, start + boot.FS_info, 1, (char_t *) &fs);
-            if (fs.lead_signature == LEAD_SIGNATURE &&
-                fs.struct_signature == STRUCT_SIGNATURE &&
-                fs.boot_signature == BOOT_SIGNATURE) {
+            secread(port, drive, start + boot.FS_info, 1, (char_t *) &FS);
+            if (FS.lead_signature == LEAD_SIGNATURE &&
+                FS.struct_signature == STRUCT_SIGNATURE &&
+                FS.boot_signature == BOOT_SIGNATURE) {
                 return false;
             }
         }
@@ -176,10 +173,10 @@ bool_t format(ATA_port_t port, byte_t drive, uint_t start, uint_t clus_size, uin
             boot.FAT_size16 == 0 &&
             boot.FAT_size32 > 0) {
             secwrite(port, drive, start, 1, (char_t *) &boot);
-            secread(port, drive, start + boot.FS_info, 1, (char_t *) &fs);
-            if (fs.lead_signature == LEAD_SIGNATURE &&
-                fs.struct_signature == STRUCT_SIGNATURE &&
-                fs.boot_signature == BOOT_SIGNATURE) {
+            secread(port, drive, start + boot.FS_info, 1, (char_t *) &FS);
+            if (FS.lead_signature == LEAD_SIGNATURE &&
+                FS.struct_signature == STRUCT_SIGNATURE &&
+                FS.boot_signature == BOOT_SIGNATURE) {
                 return false;
             }
         }
@@ -187,13 +184,13 @@ bool_t format(ATA_port_t port, byte_t drive, uint_t start, uint_t clus_size, uin
     boot.jump[0] = 0xEB;
     boot.jump[1] = 0x58;
     boot.jump[2] = 0x90;
-    set(boot.name, ' ', 8);
-    boot.name[0] = 'H';
-    boot.name[1] = 'L';
-    boot.name[2] = 'O';
-    boot.name[3] = 'S';
+    set(boot.OEM, ' ', ARRAY_SIZE(boot.OEM));
+    boot.OEM[0] = 'H';
+    boot.OEM[1] = 'L';
+    boot.OEM[2] = 'O';
+    boot.OEM[3] = 'S';
     boot.sector_size = SECTOR_SIZE;
-    boot.cluster_size = clus_size;
+    boot.cluster_size = clus_count;
     boot.reserved_count = 32;
     boot.FAT_count = 2;
     boot.root_count = 0;
@@ -209,7 +206,22 @@ bool_t format(ATA_port_t port, byte_t drive, uint_t start, uint_t clus_size, uin
     boot.root = 2;
     boot.FS_info = 1;
     boot.backup = 6;
-    set(boot.reserved, 0, ARRAY_SIZE(boot.reserved));
+    set(boot.reserved1, 0, ARRAY_SIZE(boot.reserved1));
+    boot.drive = 0x80;
+    boot.reserved2 = 0;
+    boot.extended_signature = 0x29;
+    boot.id = 0xBADA55;
+    set(boot.name, ' ', ARRAY_SIZE(boot.name));
+    boot.name[0] = 'H';
+    boot.name[1] = 'L';
+    boot.name[2] = 'O';
+    boot.name[3] = 'S';
+    set(boot.type, ' ', ARRAY_SIZE(boot.type));
+    boot.type[0] = 'F';
+    boot.type[1] = 'A';
+    boot.type[2] = 'T';
+    boot.type[3] = '3';
+    boot.type[4] = '2';
     set(boot.bootloader, 0, ARRAY_SIZE(boot.bootloader));
     boot.boot_signature = BOOT_SIGNATURE;
     // File system sector
@@ -227,20 +239,19 @@ bool_t format(ATA_port_t port, byte_t drive, uint_t start, uint_t clus_size, uin
     boot.FAT_size32 = FAT_size;
     secwrite(port, drive, start, 1, (char_t *) &boot); // Boot sector
     secwrite(port, drive, start + boot.backup, 1, (char_t *) &boot); // Backup sector
-    fs.lead_signature = LEAD_SIGNATURE;
-    set(fs.reserved1, 0, ARRAY_SIZE(fs.reserved1));
-    fs.struct_signature = STRUCT_SIGNATURE;
-    fs.free = clusters - 2;
-    fs.next = 3;
-    set(fs.reserved2, 0, ARRAY_SIZE(fs.reserved2));
-    fs.boot_signature = BOOT_SIGNATURE;
-    secwrite(port, drive, start + 1, 1, (char_t *) &fs);
+    FS.lead_signature = LEAD_SIGNATURE;
+    set(FS.reserved1, 0, ARRAY_SIZE(FS.reserved1));
+    FS.struct_signature = STRUCT_SIGNATURE;
+    FS.free = clusters - 2;
+    FS.next = 2;
+    set(FS.reserved2, 0, ARRAY_SIZE(FS.reserved2));
+    FS.boot_signature = BOOT_SIGNATURE;
+    secwrite(port, drive, start + 1, 1, (char_t *) &FS);
     // FAT sectors
     FAT32_table_t table = {0};
     for (uint_t i = 0; i < boot.FAT_count; ++i) {
         table.entries[0] = FAT32_RESERVED;
         table.entries[1] = FAT32_END;
-        table.entries[2] = FAT32_END;
         secwrite(
             port,
             drive,
@@ -250,7 +261,6 @@ bool_t format(ATA_port_t port, byte_t drive, uint_t start, uint_t clus_size, uin
         );
         table.entries[0] = 0;
         table.entries[1] = 0;
-        table.entries[2] = 0;
         for (uint_t j = 1; j < boot.FAT_size32; ++j) {
             secwrite(
                 port,
@@ -268,31 +278,28 @@ bool_t format(ATA_port_t port, byte_t drive, uint_t start, uint_t clus_size, uin
         secwrite(port, drive, root + i, 1, (char_t *) cluster);
     }
     // Root directory
-    FAT32_directory_t dir = {0};
-    date_t current_date = date();
-    uint_t current_time = time();
-    set(dir.name, ' ', 8);
-    dir.name[0] = 'H';
-    dir.name[1] = 'L';
-    dir.name[2] = 'O';
-    dir.name[3] = 'S';
-    dir.extension[0] = ' ';
-    dir.extension[1] = ' ';
-    dir.extension[2] = ' ';
-    dir.attributes = FAT32_ATTRIBUTE_VOLUME;
-    dir.reserved = 0;
-    dir.create_ms = current_time % 60;
-    dir.create_time = (current_date.hour << 11) | (current_date.minute << 5) | (current_date.second / 2);
-    dir.create_date = ((current_date.year - 1980) << 9) | (current_date.month << 5) | current_date.day;
-    dir.open_date = dir.create_date;
-    dir.cluster_high = 0;
-    dir.write_time = dir.create_time;
-    dir.write_date = dir.create_date;
-    dir.cluster_low = 0;
-    dir.size = 0;
-    secwrite(port, drive, root, 1, (char_t *) &dir);
+    mount(port, drive, root);
+    FAT32_alloc("HLOS", 0, FAT32_ATTRIBUTE_VOLUME);
     return true;
 }
+
+/** Allocates a new file entry for the mounted FAT32 instance at <path>. Returns the new entry or NOT_FOUND. */
+FAT32_entry_t FAT32_alloc(string_t path, uint_t size, FAT32_attributes_t attr) {
+    assert(path != NULL, "FAT32_alloc() - path was NULL!");
+    assert(attr != 0, "FAT32_alloc() - attr was empty!");
+    return NOT_FOUND;
+}
+
+/** Finds a file entry for the mounted FAT32 instance at <path>. Returns the new entry or NOT_FOUND. */
+FAT32_entry_t FAT32_find(string_t path) {
+    assert(path != NULL, "FAT32_find() - path was NULL!");
+    return NOT_FOUND;
+}
+
+/** Frees the file entry for the mounted FAT32 instance at <path>. Returns whether it was successful. */
+bool_t FAT32_free(FAT32_entry_t entry) {
+}
+
 
 /** Reads <num> number of 512-byte sectors at <sec> into <str>. */
 char_t *secread(ATA_port_t port, byte_t drive, uint_t sec, uint_t num, char_t *str) {

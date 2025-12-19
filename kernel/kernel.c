@@ -29,6 +29,9 @@ void clock(void *);
 /** Text-editing sequence. */
 string_t textedit(string_t text);
 
+/** Requests a directory from the user. */
+string_t directory(string_t prompt, string_t operation);
+
 /** The entry point of the HLOS kernel. */
 void kernel_main() {
     init();
@@ -37,15 +40,53 @@ void kernel_main() {
     clock(NULL);
     char_t text[VGA_SIZE];
     strcopy(text, "int main() {\n\treturn 0;\n}\n");
+    char_t dir[VGA_WIDTH - 2];
+    uint_t i;
     while (true) {
         switch (selection()) {
             default:
                 break;
             case SELECTION_FILES_OPEN:
+                strcopy(dir, directory("file", "OPEN"));
+                i = strlast(dir, '.');
+                if (i != NOT_FOUND) {
+                    if (strcompare(strlower(dir + i + 1), "txt") == EQUAL_TO) {
+                        if (filesize(dir, &i)) {
+                            fileread(dir, 0, i);
+                        } else {
+                            text[0] = '\0';
+                        }
+                        strcopy(text, textedit(text));
+                    } else if (strcompare(dir + i + 1, "exe") == EQUAL_TO) {
+                        call(dir);
+                    } else {
+                        color(VGA_COLOR_RED, VGA_COLOR_BLACK);
+                        print("\n\nUnknown file type!");
+                        sleep(1000);
+                    }
+                } else {
+                    color(VGA_COLOR_RED, VGA_COLOR_BLACK);
+                    print("\n\nFile not found!");
+                    sleep(1000);
+                }
                 break;
             case SELECTION_FILES_SAVE:
+                strcopy(dir, directory("filename", "SAVE"));
+                if (strlen(dir) > 0) {
+                    filewrite(dir, text);
+                } else {
+                    color(VGA_COLOR_RED, VGA_COLOR_BLACK);
+                    print("\n\nInvalid file name!");
+                    sleep(1000);
+                }
                 break;
             case SELECTION_FILES_DELETE:
+                strcopy(dir, directory("filename", "DELETE"));
+                if (!filedelete(dir)) {
+                    color(VGA_COLOR_RED, VGA_COLOR_BLACK);
+                    print("\n\nFile not found!");
+                    sleep(1000);
+                }
                 break;
             case SELECTION_FILES_FORMAT:
                 color(VGA_COLOR_LIGHT_RED, VGA_COLOR_BLACK);
@@ -70,6 +111,7 @@ void kernel_main() {
             case SELECTION_SHUTDOWN:
                 color(VGA_COLOR_GREEN, VGA_COLOR_BLACK);
                 print("\n\nGoodbye!");
+                free((void *) FAT32.dir);
                 shutdown(1000);
                 break;
         }
@@ -259,4 +301,29 @@ string_t textedit(string_t text) {
             return text;
         }
     }
+}
+
+/** Requests a directory from the user. */
+string_t directory(string_t prompt, string_t operation) {
+    clear();
+    color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
+    print(datestr(date(), false));
+    color(VGA_COLOR_BROWN, VGA_COLOR_BLACK);
+    char_t list[5][VGA_SIZE - 2];
+    uint_t size = filelist(FAT32.dir, 5, (char_t **) list);
+    print("\n\nHLOS/FILES/");
+    print(operation);
+    print("\n\n");
+    color(VGA_COLOR_LIGHT_BLUE, VGA_COLOR_BLACK);
+    for (uint_t i = 0; i < 5; ++i) {
+        print("- ");
+        print(list[i]);
+        printchar('\n');
+    }
+    color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
+    print("\nPlease enter a ");
+    print(prompt);
+    print(".\n\n> ");
+    color(VGA_COLOR_YELLOW, VGA_COLOR_BLACK);
+    return read(VGA_WIDTH - 2, false, NULL);
 }

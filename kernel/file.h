@@ -7,38 +7,17 @@
 
 #include "lib.h"
 
+/** The size in bytes of a sector. */
+#define SECTOR_SIZE 512
+
+/** The size in bytes of a directory. */
+#define DIRECTORY_SIZE 32
+
 /** Advanced Technology Attachment master drive command. */
 #define ATA_MASTER_DRIVE 0xE0
 
 /** Advanced Technology Attachment slave drive command. */
 #define ATA_SLAVE_DRIVE 0xF0
-
-/** Advanced Technology Attachment read command. */
-#define ATA_READ 0x20
-
-/** Advanced Technology Attachment write command. */
-#define ATA_WRITE 0x30
-
-/** Advanced Technology Attachment reset command. */
-#define ATA_RESET 0x4
-
-/** Advanced Technology Attachment busy status. */
-#define ATA_BUSY 0x80
-
-/** Advanced Technology Attachment request status. */
-#define ATA_REQUEST 0x8
-
-/** Advanced Technology Attachment busy status. */
-#define ATA_ERROR 0x1
-
-/** The size in bytes of a sector. */
-#define SECTOR_SIZE 512
-
-/** The sector FAT32 resides on disk. */
-#define FAT32_START 64
-
-/** The size in sectors of FAT32. */
-#define FAT32_SIZE 1048576
 
 /** The boot sector's signature. */
 #define BOOT_SIGNATURE 0xAA55
@@ -49,11 +28,17 @@
 /** The file system sector's struct signature. */
 #define STRUCT_SIGNATURE 0x61417272
 
-/** FAT32 reserved entry 1. */
-#define FAT32_RESERVED 0xFFFFFF8
+/** Converts a mounted FAT32 cluster into a FAT32 sector. */
+#define CLUSTER_TO_SECTOR(cluster) ((FAT32.start + FAT32.boot.reserved_count + (FAT32.boot.FAT_count * FAT32.boot.FAT_size32)) + (((cluster) - 2) * FAT32.boot.cluster_size))
 
-/** FAT32 reserved entry 2. */
-#define FAT32_END 0xFFFFFFF
+/** Converts a mounted FAT32 sector into a FAT32 cluster. */
+#define SECTOR_TO_CLUSTER(sector) ((((sector) - (FAT32.start + FAT32.boot.reserved_count + (FAT32.boot.FAT_count * FAT32.boot.FAT_size32))) / FAT32.boot.cluster_size) + 2)
+
+/** The sector FAT32 resides on disk. */
+#define FAT32_START 64
+
+/** The size in sectors of FAT32. */
+#define FAT32_SIZE 1048576
 
 /** Advanced Technology Attachment ports. */
 typedef enum ATA_port {
@@ -83,6 +68,16 @@ typedef enum ATA_port {
     ATA_PORT_SECONDARY_CTRL = 0x376,
 } ATA_port_t;
 
+/** Advanced Technology Attachment commands. */
+typedef enum ATA_command {
+    ATA_READ = 0x20,
+    ATA_WRITE = 0x30,
+    ATA_RESET = 0x4,
+    ATA_BUSY = 0x80,
+    ATA_REQUEST = 0x8,
+    ATA_ERROR = 0x1,
+} ATA_command_t;
+
 /** File Allocation Table (32-bit) file attributes. */
 typedef enum FAT32_attributes {
     FAT32_ATTRIBUTE_READONLY = 1,
@@ -90,15 +85,23 @@ typedef enum FAT32_attributes {
     FAT32_ATTRIBUTE_SYSTEM = 4,
     FAT32_ATTRIBUTE_VOLUME = 8,
     FAT32_ATTRIBUTE_DIRECTORY = 16,
-    FAT32_ATTRIBUTE_ARCHIVE = 32,
+    FAT32_ATTRIBUTE_FILE = 32,
 } FAT32_attributes_t;
+
+/** Fille Allocation Table (32-bit) cluster states. */
+typedef enum FAT32_cluster_state {
+    FAT32_RESERVED = 0xFFFFFF8,
+    FAT32_END = 0xFFFFFFF,
+    FAT32_EMPTY = 0x0,
+    FAT32_FREE = 0xE5,
+} FAT32_cluster_state_t;
 
 #pragma pack(push, 1)
 
 /** File Allocation Table (32-bit) boot sector. */
 typedef struct FAT32_boot {
     byte_t jump[3];
-    char_t name[8];
+    char_t OEM[8];
     ushort_t sector_size;
     byte_t cluster_size;
     ushort_t reserved_count;
@@ -117,8 +120,14 @@ typedef struct FAT32_boot {
     uint_t root;
     ushort_t FS_info;
     ushort_t backup;
-    byte_t reserved[12];
-    byte_t bootloader[446];
+    byte_t reserved1[12];
+    byte_t drive;
+    byte_t reserved2;
+    byte_t extended_signature;
+    uint_t id;
+    char_t name[11];
+    char_t type[8];
+    byte_t bootloader[420];
     ushort_t boot_signature;
 } __attribute__((packed)) FAT32_boot_t;
 
@@ -178,14 +187,14 @@ typedef struct FAT32 {
     FAT32_boot_t boot;
 
     /** Cached data for the FAT32 file system sector. */
-    FAT32_FS_t fs;
+    FAT32_FS_t FS;
 
     /** The current local directory of the FAT32 file system.*/
     string_t dir;
 } FAT32_t;
 
 /** Cached data for the mounted File Allocation Table (32-bit). */
-extern FAT32_t FAT;
+extern FAT32_t FAT32;
 
 /**
  * Reads the file at the given path and offset for the given size.
@@ -217,14 +226,23 @@ bool_t filedelete(string_t path);
 /** Returns whether a file exists and writes its size into <size>. */
 bool_t filesize(string_t path, uint_t *size);
 
-/** Fills <list> with the first <size> names of each file in <dir> and returns whether it was successful. */
-bool_t filelist(string_t dir, uint_t size, char_t **list);
+/** Fills <list> with the first <size> names of each file in <dir> and returns the number of files. */
+uint_t filelist(string_t dir, uint_t size, char_t **list);
 
 /** Mounts the given FAT32 partition as the current hard drive, if possible. */
 bool_t mount(ATA_port_t port, byte_t drive, uint_t start);
 
 /** Formats the hard drive for FAT32. */
-bool_t format(ATA_port_t port, byte_t drive, uint_t start, uint_t clus_size, uint_t part_size, bool_t force);
+bool_t format(ATA_port_t port, byte_t drive, uint_t start, uint_t clus_count, uint_t part_size, bool_t force);
+
+/** Allocates a new file entry for the mounted FAT32 instance at <path>. Returns the new entry or NOT_FOUND. */
+FAT32_entry_t FAT32_alloc(string_t path, uint_t size, FAT32_attributes_t attr);
+
+/** Finds a file entry for the mounted FAT32 instance at <path>. Returns the new entry or NOT_FOUND. */
+FAT32_entry_t FAT32_find(string_t path);
+
+/** Frees the file entry for the mounted FAT32 instance at <path>. Returns whether it was successful. */
+bool_t FAT32_free(FAT32_entry_t entry);
 
 /** Reads <num> number of 512-byte sectors at <sec> into <str>. */
 char_t *secread(ATA_port_t port, byte_t drive, uint_t sec, uint_t num, char_t *str);
