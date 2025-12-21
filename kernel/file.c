@@ -13,96 +13,155 @@ FAT32_cache_t FAT32 = {0};
 
 /**
  * Reads the file at <path> at <offset> for <size> into <file>.
- * Returns <file> or NULL if no file was found.
+ * Returns whether reading was successful.
  */
-string_t fileread(string_t path, uint_t offset, uint_t size, char_t *file) {
+bool_t fileread(string_t path, uint_t offset, uint_t size, char_t *file) {
     assert(path != NULL, "fileread() - path was NULL!");
-    assert(file != NULL, "fileread() - file was NULL!");
-    if (!FAT32.mounted) {
-        return NULL;
-    }
-    FAT32_directory_t dir = FAT32_find(path);
+    FAT32_directory_t dir = FAT32_find(path, NULL);
     if (DIRECTORY_END(dir)) {
-        return NULL;
+        return false;
     }
-    // TODO
-    return NULL;
+    if (offset >= dir.size) {
+        return false;
+    }
+    FAT32_cluster_t clus = DIRECTORY_CLUSTER(dir);
+    uint_t clus_size = FAT32.boot.cluster_size * FAT32.boot.sector_size;
+    while (offset >= clus_size) {
+        clus = FAT32.table[clus];
+        if (CLUSTER_END(clus)) {
+            return false;
+        }
+        offset -= clus_size;
+    }
+    uint_t max = dir.size - offset;
+    size = size < max ? size : max;
+    char_t *mem = FAT32_load(clus, (size / clus_size) + 1);
+    if (mem == NULL) {
+        return false;
+    }
+    copy(file, mem + offset, size);
+    free(mem);
+    return true;
 }
 
 /**
- * Writes <data> to the file at <path>.
- * Returns whether an existing file was overwritten.
+ * Writes <size> bytes in <data> to the file at <path>.
+ * Returns whether writing was successful.
  */
-bool_t filewrite(string_t path, string_t data) {
+bool_t filewrite(string_t path, uint_t size, string_t data) {
     assert(path != NULL, "filewrite() - path was NULL!");
-    if (!FAT32.mounted) {
-        return false;
+    uint_t fsize;
+    if (filesize(path, &fsize)) {
+        char_t *file = malloc(fsize);
+        if (file == NULL) {
+            return false;
+        }
+        if (!fileread(path, 0, fsize, file)) {
+            free(file);
+            return false;
+        }
+        filedelete(path);
+        if (!fileappend(path, size, data)) {
+            fileappend(path, fsize, file);
+            free(file);
+            return false;
+        }
+        free(file);
+        return true;
     }
-    FAT32_directory_t dir = FAT32_find(path);
-    if (DIRECTORY_END(dir)) {
-        return false;
-    }
-    // TODO
-    return false;
+    return fileappend(path, size, data);
 }
 
 /**
- * Appends <data> to the file at <path>.
- * Returns whether an existing file was appended to.
+ * Appends <size> bytes in <data> to the file at <path>.
+ * Returns whether writing was successful.
  */
-bool_t fileappend(string_t path, string_t data) {
+bool_t fileappend(string_t path, uint_t size, string_t data) {
     assert(path != NULL, "fileappend() - path was NULL!");
-    if (!FAT32.mounted) {
+    FAT32_cluster_t clus;
+    FAT32_directory_t dir = FAT32_find(path, &clus);
+    bool_t app = !DIRECTORY_END(dir);
+    if (app && (dir.attributes & FAT32_ATTRIBUTE_READONLY) != 0) {
         return false;
     }
-    FAT32_directory_t dir = FAT32_find(path);
-    if (DIRECTORY_END(dir)) {
+    uint_t fsize = app ? dir.size : 0;
+    FAT32_attributes_t attr;
+    if (strfirst(path, '.') != NOT_FOUND) {
+        attr = FAT32_ATTRIBUTE_FILE;
+    } else {
+        assert(size == 0, "fileappend() - Cannot append to a directory!");
+        attr = FAT32_ATTRIBUTE_DIRECTORY;
+    }
+    uint_t clus_size = FAT32.boot.cluster_size * FAT32.boot.sector_size;
+    uint_t total_clus = (fsize + size + clus_size - 1) / clus_size;
+    char_t *file = NULL;
+    FAT32_cluster_t new_clus;
+    if (fsize + size > 0) {
+        file = malloc(fsize + size);
+        if (file == NULL) {
+            return false;
+        }
+        if (app) {
+            fileread(path, 0, fsize, file);
+        }
+        append(file, fsize, data, size);
+    }
+    FAT32_free(clus, true);
+    FAT32_directory_t new_dir = FAT32_alloc(path, total_clus, attr, fsize + size, file, &new_clus);
+    if (DIRECTORY_END(new_dir)) {
+        FAT32_alloc(path, (fsize + clus_size - 1) / clus_size, attr, fsize, file, NULL); // Restore the deleted file
         return false;
     }
-    // TODO
-    return false;
+    free(file);
+    return true;
 }
 
 /**
  * Moves the file from <start> to <end>.
- * Returns whether an existing file was overwritten at <end>.
+ * Returns whether moving was successful.
  */
-bool_t filemove(string_t end, string_t start) {
-    assert(end != NULL, "filemove() - end was NULL!");
-    assert(start != NULL, "filemove() - start was NULL!");
-    if (!FAT32.mounted) {
+bool_t filemove(string_t dest, string_t src) {
+    assert(dest != NULL, "filemove() - end was NULL!");
+    assert(src != NULL, "filemove() - start was NULL!");
+    uint_t size;
+    if (!filesize(src, &size)) {
         return false;
     }
-    FAT32_directory_t start_dir = FAT32_find(start);
-    if (DIRECTORY_END(start_dir)) {
+    char_t *data = malloc(size);
+    if (data == NULL) {
         return false;
     }
-    FAT32_directory_t end_dir = FAT32_find(end);
-    // TODO
-    return false;
+    if (!fileread(src, 0, size, data)) {
+        free(data);
+        return false;
+    }
+    if (!filewrite(dest, size, data)) {
+        free(data);
+        return false;
+    }
+    filedelete(src);
+    free(data);
+    return true;
 }
 
 /** Deletes the file at <path> and returns whether a file was erased. */
 bool_t filedelete(string_t path) {
     assert(path != NULL, "filedelete() - path was NULL!");
-    if (!FAT32.mounted) {
-        return NOT_FOUND;
-    }
-    FAT32_directory_t dir = FAT32_find(path);
-    if (DIRECTORY_END(dir)) {
+    FAT32_cluster_t clus;
+    if (DIRECTORY_END(FAT32_find(path, &clus))) {
         return false;
     }
-    return FAT32_free(DIRECTORY_CLUSTER(dir), strfirst(path, '.') == NOT_FOUND);
+    return FAT32_free(clus, true);
 }
 
 /** Returns whether a file exists at <path> and writes its size into <size>. */
 bool_t filesize(string_t path, uint_t *size) {
     assert(path != NULL, "filesize() - path was NULL!");
-    if (!FAT32.mounted) {
-        return NOT_FOUND;
-    }
-    FAT32_directory_t dir = FAT32_find(path);
+    FAT32_directory_t dir = FAT32_find(path, NULL);
     if (DIRECTORY_END(dir)) {
+        if (size != NULL) {
+            *size = 0;
+        }
         return false;
     }
     if (size != NULL) {
@@ -111,14 +170,14 @@ bool_t filesize(string_t path, uint_t *size) {
     return true;
 }
 
-/** Fills <list> with the first <size> names of each file in <path> and returns the number of files. */
+/**
+ * Fills <list> with the first <size> names of each file in <path> and returns the number of files.
+ * Each <list> entry must be at least FILE_NAME_LEN characters.
+ */
 uint_t filelist(string_t path, uint_t size, char_t **list) {
     assert(path != NULL, "filelist() - dir was NULL!");
-    if (!FAT32.mounted) {
-        return NOT_FOUND;
-    }
-    FAT32_directory_t file = FAT32_find(path);
-    if (DIRECTORY_END(file)) {
+    FAT32_directory_t file = FAT32_find(path, NULL);
+    if (DIRECTORY_END(file) || (file.attributes & FAT32_ATTRIBUTE_DIRECTORY) == 0) {
         return 0;
     }
     FAT32_directory_t *start = (FAT32_directory_t *) FAT32_load(DIRECTORY_CLUSTER(file),ALL_CLUSTERS);
@@ -133,7 +192,20 @@ uint_t filelist(string_t path, uint_t size, char_t **list) {
             strcompare(iter->name, "..") == EQUAL_TO) {
             continue;
         }
-        copy(list[count], iter->name, ARRAY_SIZE(iter->name) + ARRAY_SIZE(iter->extension));
+        if (list != NULL) {
+            uint_t name_len = strfirst(iter->name, ' ');
+            name_len = min((int_t) name_len, ARRAY_SIZE(iter->name));
+            uint_t ext_len = strfirst(iter->extension, ' ');
+            ext_len = min((int_t) ext_len, ARRAY_SIZE(iter->extension));
+            copy(list[count], iter->name, name_len);
+            if (ext_len > 0) {
+                list[count][name_len] = '.';
+                copy(list[count] + name_len + 1, iter->extension, ext_len);
+                list[count][name_len + ext_len + 1] = '\0';
+            } else {
+                list[count][name_len] = '\0';
+            }
+        }
         --size;
         ++count;
     }
@@ -306,7 +378,7 @@ bool_t format(ATA_port_t port, byte_t drive, uint_t start, uint_t clus_count, ui
     // FAT sectors
     FAT32_cluster_t table[128];
     for (uint_t i = 0; i < boot.FAT_count; ++i) {
-        table[0] = FAT32_CLUSTER_RESERVED;
+        table[0] = FAT32_CLUSTER_RESERVED | boot.media;
         table[1] = FAT32_CLUSTER_END;
         secwrite(
             port,
@@ -335,19 +407,29 @@ bool_t format(ATA_port_t port, byte_t drive, uint_t start, uint_t clus_count, ui
     }
     // Root directory
     mount(port, drive, root);
-    FAT32_alloc("HLOS", 0, FAT32_ATTRIBUTE_VOLUME);
+    FAT32_alloc("HLOS", 0, FAT32_ATTRIBUTE_VOLUME, 0, NULL, NULL);
     return true;
 }
 
-/** Allocates new clusters for the mounted FAT32 instance at <path>. Returns the first cluster entry or NOT_FOUND. */
-FAT32_cluster_t FAT32_alloc(string_t path, uint_t size, FAT32_attributes_t attr) {
+/**
+ * Allocates new clusters for the mounted FAT32 instance at <path>. <clus> is set to the new directory's cluster.
+ * Returns the new directory. name[0] is FAT32_DIRECTORY_END on failure.
+ */
+FAT32_directory_t FAT32_alloc(
+    string_t path,
+    uint_t num,
+    FAT32_attributes_t attr,
+    uint_t size,
+    string_t data,
+    FAT32_cluster_t *clus
+) {
     assert(path != NULL, "FAT32_alloc() - path was NULL!");
     assert(attr != 0, "FAT32_alloc() - attr was empty!");
     if (!FAT32.mounted) {
-        return NOT_FOUND;
+        return (FAT32_directory_t){0};
     }
     // TODO
-    return NOT_FOUND;
+    return (FAT32_directory_t){0};
 }
 
 /** Loads all of <clus> for the mounted FAT32 instance into memory. This pointer must be freed! */
@@ -366,7 +448,7 @@ void *FAT32_load(FAT32_cluster_t clus, uint_t max) {
         ++count;
     }
     clus = start;
-    void *mem = malloc(FAT32.boot.cluster_size * count * FAT32.boot.sector_size);
+    void *mem = malloc(FAT32.boot.cluster_size * FAT32.boot.sector_size * count);
     if (mem == NULL) {
         return NULL;
     }
@@ -383,15 +465,17 @@ void *FAT32_load(FAT32_cluster_t clus, uint_t max) {
     return mem;
 }
 
-/** Returns the directory entry for the file at <path>. name[0] is FAT32_DIRECTORY_END on failure. */
-FAT32_directory_t FAT32_find(string_t path) {
+/**
+ * Returns the directory for the file at <path>. <clus> is set to the directory's cluster.
+ * name[0] is FAT32_DIRECTORY_END on failure.
+ */
+FAT32_directory_t FAT32_find(string_t path, FAT32_cluster_t *clus) {
     assert(path != NULL, "FAT32_find() - path was NULL!");
     if (!FAT32.mounted) {
         return (FAT32_directory_t){0};
     }
-    FAT32_directory_t dir;
     // TODO
-    return dir;
+    return (FAT32_directory_t){0};
 }
 
 /** Frees the cluster train for the mounted FAT32 instance at <clus>. Returns whether it was successful. */
@@ -423,6 +507,8 @@ bool_t FAT32_free(FAT32_cluster_t clus, bool_t dir) {
                 FAT32_free(target, false);
             }
         }
+        start[0].name[0] = FAT32_DIRECTORY_SKIP;
+        secwrite(FAT32.port, FAT32.drive, CLUSTER_TO_SECTOR(clus), FAT32.boot.cluster_size, (char_t *) start);
         free(start);
     }
     while (!CLUSTER_END(clus)) {

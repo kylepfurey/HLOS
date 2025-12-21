@@ -37,11 +37,17 @@
 /** Returns whether a cluster entry is the end of a cluster chain. */
 #define CLUSTER_END(clus) ((clus) >= FAT32_CLUSTER_RESERVED && (clus) <= FAT32_CLUSTER_END)
 
-/** Returns whether a directory entry is the end of a directory array. */
+/** Returns whether a directory is the end of a directory array. */
 #define DIRECTORY_END(dir) ((dir).name[0] == FAT32_DIRECTORY_END)
 
 /** Loads the entire cluster chain into memory. */
 #define ALL_CLUSTERS ((uint_t) -1)
+
+/** Loads the entire file into memory. */
+#define ALL_BYTES ((uint_t) -1)
+
+/** The maximum length of a file name (including null-terminator). */
+#define FILE_NAME_LEN 13
 
 /** The sector FAT32 resides on disk. */
 #define FAT32_START 64
@@ -101,7 +107,7 @@ typedef enum FAT32_attributes {
 typedef enum FAT32_state {
     FAT32_CLUSTER_FREE = 0x0,
     FAT32_CLUSTER_BAD = 0xFFFFFFF7,
-    FAT32_CLUSTER_RESERVED = 0xFFFFFFF8,
+    FAT32_CLUSTER_RESERVED = 0xFFFFFF8,
     FAT32_CLUSTER_END = 0xFFFFFFFF,
     FAT32_DIRECTORY_SKIP = 0xE5,
     FAT32_DIRECTORY_END = 0x0,
@@ -207,27 +213,27 @@ extern FAT32_cache_t FAT32;
 
 /**
  * Reads the file at <path> at <offset> for <size> into <file>.
- * Returns <file> or NULL if no file was found.
+ * Returns whether reading was successful.
  */
-string_t fileread(string_t path, uint_t offset, uint_t size, char_t *file);
+bool_t fileread(string_t path, uint_t offset, uint_t size, char_t *file);
 
 /**
- * Writes <data> to the file at <path>.
- * Returns whether an existing file was overwritten.
+ * Writes <size> bytes in <data> to the file at <path>.
+ * Returns whether writing was successful.
  */
-bool_t filewrite(string_t path, string_t data);
+bool_t filewrite(string_t path, uint_t size, string_t data);
 
 /**
- * Appends <data> to the file at <path>.
- * Returns whether an existing file was appended to.
+ * Appends <size> bytes in <data> to the file at <path>.
+ * Returns whether writing was successful.
  */
-bool_t fileappend(string_t path, string_t data);
+bool_t fileappend(string_t path, uint_t size, string_t data);
 
 /**
  * Moves the file from <start> to <end>.
- * Returns whether an existing file was overwritten at <end>.
+ * Returns whether moving was successful.
  */
-bool_t filemove(string_t end, string_t start);
+bool_t filemove(string_t dest, string_t src);
 
 /** Deletes the file at <path> and returns whether a file was erased. */
 bool_t filedelete(string_t path);
@@ -235,7 +241,10 @@ bool_t filedelete(string_t path);
 /** Returns whether a file exists at <path> and writes its size into <size>. */
 bool_t filesize(string_t path, uint_t *size);
 
-/** Fills <list> with the first <size> names of each file in <path> and returns the number of files. */
+/**
+ * Fills <list> with the first <size> names of each file in <path> and returns the number of files.
+ * Each <list> entry must be at least FILE_NAME_LEN characters.
+ */
 uint_t filelist(string_t path, uint_t size, char_t **list);
 
 /** Mounts the given FAT32 partition as the current hard drive, if possible. */
@@ -244,14 +253,27 @@ bool_t mount(ATA_port_t port, byte_t drive, uint_t start);
 /** Formats the hard drive for FAT32. */
 bool_t format(ATA_port_t port, byte_t drive, uint_t start, uint_t clus_count, uint_t part_size, bool_t force);
 
-/** Allocates new clusters for the mounted FAT32 instance at <path>. Returns the first cluster entry or NOT_FOUND. */
-FAT32_cluster_t FAT32_alloc(string_t path, uint_t size, FAT32_attributes_t attr);
+/**
+ * Allocates new clusters for the mounted FAT32 instance at <path>. <clus> is set to the new directory's cluster.
+ * Returns the new directory. name[0] is FAT32_DIRECTORY_END on failure.
+ */
+FAT32_directory_t FAT32_alloc(
+    string_t path,
+    uint_t num,
+    FAT32_attributes_t attr,
+    uint_t size,
+    string_t data,
+    FAT32_cluster_t *clus
+);
 
 /** Loads all of <clus> for the mounted FAT32 instance into memory. This pointer must be freed! */
 void *FAT32_load(FAT32_cluster_t clus, uint_t max);
 
-/** Returns the directory entry for the file at <path>. name[0] is FAT32_DIRECTORY_END on failure. */
-FAT32_directory_t FAT32_find(string_t path);
+/**
+ * Returns the directory for the file at <path>. <clus> is set to the directory's cluster.
+ * name[0] is FAT32_DIRECTORY_END on failure.
+ */
+FAT32_directory_t FAT32_find(string_t path, FAT32_cluster_t *clus);
 
 /** Frees the cluster train for the mounted FAT32 instance at <clus>. Returns whether it was successful. */
 bool_t FAT32_free(FAT32_cluster_t clus, bool_t dir);

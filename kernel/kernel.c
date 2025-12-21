@@ -71,7 +71,7 @@ void kernel_main() {
             case SELECTION_FILES_SAVE:
                 strcopy(dir, directory("filename", "SAVE"));
                 if (strlen(dir) > 0) {
-                    filewrite(dir, text);
+                    filewrite(dir, strlen(text) + 1, text);
                 } else {
                     color(VGA_COLOR_RED, VGA_COLOR_BLACK);
                     print("\n\nInvalid file name!");
