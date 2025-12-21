@@ -10,9 +10,6 @@
 /** The size in bytes of a sector. */
 #define SECTOR_SIZE 512
 
-/** The size in bytes of a directory. */
-#define DIRECTORY_SIZE 32
-
 /** Advanced Technology Attachment master drive command. */
 #define ATA_MASTER_DRIVE 0xE0
 
@@ -28,11 +25,23 @@
 /** The file system sector's struct signature. */
 #define STRUCT_SIGNATURE 0x61417272
 
-/** Converts a mounted FAT32 cluster into a FAT32 sector. */
+/** Converts a mounted FAT32 cluster entry into a FAT32 sector. */
 #define CLUSTER_TO_SECTOR(cluster) ((FAT32.start + FAT32.boot.reserved_count + (FAT32.boot.FAT_count * FAT32.boot.FAT_size32)) + (((cluster) - 2) * FAT32.boot.cluster_size))
 
-/** Converts a mounted FAT32 sector into a FAT32 cluster. */
+/** Converts a mounted FAT32 sector into a FAT32 cluster entry. */
 #define SECTOR_TO_CLUSTER(sector) ((((sector) - (FAT32.start + FAT32.boot.reserved_count + (FAT32.boot.FAT_count * FAT32.boot.FAT_size32))) / FAT32.boot.cluster_size) + 2)
+
+/** Returns the cluster entry for the given directory. */
+#define DIRECTORY_CLUSTER(dir) (((dir).cluster_high << 16) | (dir).cluster_low)
+
+/** Returns whether a cluster entry is the end of a cluster chain. */
+#define CLUSTER_END(clus) ((clus) >= FAT32_CLUSTER_RESERVED && (clus) <= FAT32_CLUSTER_END)
+
+/** Returns whether a directory entry is the end of a directory array. */
+#define DIRECTORY_END(dir) ((dir).name[0] == FAT32_DIRECTORY_END)
+
+/** Loads the entire cluster chain into memory. */
+#define ALL_CLUSTERS ((uint_t) -1)
 
 /** The sector FAT32 resides on disk. */
 #define FAT32_START 64
@@ -78,7 +87,7 @@ typedef enum ATA_command {
     ATA_ERROR = 0x1,
 } ATA_command_t;
 
-/** File Allocation Table (32-bit) file attributes. */
+/** File Allocation Table (32-bit) attributes. */
 typedef enum FAT32_attributes {
     FAT32_ATTRIBUTE_READONLY = 1,
     FAT32_ATTRIBUTE_HIDDEN = 2,
@@ -88,13 +97,15 @@ typedef enum FAT32_attributes {
     FAT32_ATTRIBUTE_FILE = 32,
 } FAT32_attributes_t;
 
-/** Fille Allocation Table (32-bit) cluster states. */
-typedef enum FAT32_cluster_state {
-    FAT32_RESERVED = 0xFFFFFF8,
-    FAT32_END = 0xFFFFFFF,
-    FAT32_EMPTY = 0x0,
-    FAT32_FREE = 0xE5,
-} FAT32_cluster_state_t;
+/** File Allocation Table (32-bit) states. */
+typedef enum FAT32_state {
+    FAT32_CLUSTER_FREE = 0x0,
+    FAT32_CLUSTER_BAD = 0xFFFFFFF7,
+    FAT32_CLUSTER_RESERVED = 0xFFFFFFF8,
+    FAT32_CLUSTER_END = 0xFFFFFFFF,
+    FAT32_DIRECTORY_SKIP = 0xE5,
+    FAT32_DIRECTORY_END = 0x0,
+} FAT32_state_t;
 
 #pragma pack(push, 1)
 
@@ -142,13 +153,11 @@ typedef struct FAT32_FS {
     ushort_t boot_signature;
 } __attribute__((packed)) FAT32_FS_t;
 
-/** A single File Allocation Table (32-bit) entry. */
-typedef uint_t FAT32_entry_t;
+/** A single File Allocation Table (32-bit) cluster entry. */
+typedef uint_t FAT32_cluster_t;
 
-/** File Allocation Table (32-bit) table sectors. */
-typedef struct FAT32_table {
-    FAT32_entry_t entries[128];
-} __attribute__((packed)) FAT32_table_t;
+/** File Allocation Table (32-bit) sectors. */
+typedef FAT32_cluster_t *FAT32_t;
 
 /** File Allocation Table (32-bit) directory. */
 typedef struct FAT32_directory {
@@ -170,7 +179,7 @@ typedef struct FAT32_directory {
 #pragma pack(pop)
 
 /** Cached data for the File Allocation Table (32-bit). */
-typedef struct FAT32 {
+typedef struct FAT32_cache {
     /** Whether FAT32 is currently mounted. */
     bool_t mounted;
 
@@ -189,27 +198,27 @@ typedef struct FAT32 {
     /** Cached data for the FAT32 file system sector. */
     FAT32_FS_t FS;
 
-    /** The current local directory of the FAT32 file system.*/
-    string_t dir;
-} FAT32_t;
+    /** Cached data for the FAT32 sectors. */
+    FAT32_t table;
+} FAT32_cache_t;
 
 /** Cached data for the mounted File Allocation Table (32-bit). */
-extern FAT32_t FAT32;
+extern FAT32_cache_t FAT32;
 
 /**
- * Reads the file at the given path and offset for the given size.
- * Returns a string containing the file's data or NULL if no file was found.
+ * Reads the file at <path> at <offset> for <size> into <file>.
+ * Returns <file> or NULL if no file was found.
  */
-string_t fileread(string_t path, uint_t offset, uint_t size);
+string_t fileread(string_t path, uint_t offset, uint_t size, char_t *file);
 
 /**
- * Writes the given data to the given file path.
+ * Writes <data> to the file at <path>.
  * Returns whether an existing file was overwritten.
  */
 bool_t filewrite(string_t path, string_t data);
 
 /**
- * Appends the given data to the given file path.
+ * Appends <data> to the file at <path>.
  * Returns whether an existing file was appended to.
  */
 bool_t fileappend(string_t path, string_t data);
@@ -218,16 +227,16 @@ bool_t fileappend(string_t path, string_t data);
  * Moves the file from <start> to <end>.
  * Returns whether an existing file was overwritten at <end>.
  */
-bool_t filemove(string_t start, string_t end);
+bool_t filemove(string_t end, string_t start);
 
-/** Deletes the file at the given path and returns whether a file was erased. */
+/** Deletes the file at <path> and returns whether a file was erased. */
 bool_t filedelete(string_t path);
 
-/** Returns whether a file exists and writes its size into <size>. */
+/** Returns whether a file exists at <path> and writes its size into <size>. */
 bool_t filesize(string_t path, uint_t *size);
 
-/** Fills <list> with the first <size> names of each file in <dir> and returns the number of files. */
-uint_t filelist(string_t dir, uint_t size, char_t **list);
+/** Fills <list> with the first <size> names of each file in <path> and returns the number of files. */
+uint_t filelist(string_t path, uint_t size, char_t **list);
 
 /** Mounts the given FAT32 partition as the current hard drive, if possible. */
 bool_t mount(ATA_port_t port, byte_t drive, uint_t start);
@@ -235,14 +244,17 @@ bool_t mount(ATA_port_t port, byte_t drive, uint_t start);
 /** Formats the hard drive for FAT32. */
 bool_t format(ATA_port_t port, byte_t drive, uint_t start, uint_t clus_count, uint_t part_size, bool_t force);
 
-/** Allocates a new file entry for the mounted FAT32 instance at <path>. Returns the new entry or NOT_FOUND. */
-FAT32_entry_t FAT32_alloc(string_t path, uint_t size, FAT32_attributes_t attr);
+/** Allocates new clusters for the mounted FAT32 instance at <path>. Returns the first cluster entry or NOT_FOUND. */
+FAT32_cluster_t FAT32_alloc(string_t path, uint_t size, FAT32_attributes_t attr);
 
-/** Finds a file entry for the mounted FAT32 instance at <path>. Returns the new entry or NOT_FOUND. */
-FAT32_entry_t FAT32_find(string_t path);
+/** Loads all of <clus> for the mounted FAT32 instance into memory. This pointer must be freed! */
+void *FAT32_load(FAT32_cluster_t clus, uint_t max);
 
-/** Frees the file entry for the mounted FAT32 instance at <path>. Returns whether it was successful. */
-bool_t FAT32_free(FAT32_entry_t entry);
+/** Returns the directory entry for the file at <path>. name[0] is FAT32_DIRECTORY_END on failure. */
+FAT32_directory_t FAT32_find(string_t path);
+
+/** Frees the cluster train for the mounted FAT32 instance at <clus>. Returns whether it was successful. */
+bool_t FAT32_free(FAT32_cluster_t clus, bool_t dir);
 
 /** Reads <num> number of 512-byte sectors at <sec> into <str>. */
 char_t *secread(ATA_port_t port, byte_t drive, uint_t sec, uint_t num, char_t *str);

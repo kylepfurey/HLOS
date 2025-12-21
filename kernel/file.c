@@ -6,18 +6,23 @@
 #include "lib.h"
 #include "assembly.h"
 #include "time.h"
-#include "read.h"
+#include "malloc.h"
 
 /** Cached data for the mounted File Allocation Table (32-bit). */
-FAT32_t FAT32 = {0};
+FAT32_cache_t FAT32 = {0};
 
 /**
- * Reads the file at the given path for the given size.
- * Returns a string containing the file's data or NULL if no file was found.
+ * Reads the file at <path> at <offset> for <size> into <file>.
+ * Returns <file> or NULL if no file was found.
  */
-string_t fileread(string_t path, uint_t offset, uint_t size) {
+string_t fileread(string_t path, uint_t offset, uint_t size, char_t *file) {
     assert(path != NULL, "fileread() - path was NULL!");
+    assert(file != NULL, "fileread() - file was NULL!");
     if (!FAT32.mounted) {
+        return NULL;
+    }
+    FAT32_directory_t dir = FAT32_find(path);
+    if (DIRECTORY_END(dir)) {
         return NULL;
     }
     // TODO
@@ -25,7 +30,7 @@ string_t fileread(string_t path, uint_t offset, uint_t size) {
 }
 
 /**
- * Writes the given data to the given file path.
+ * Writes <data> to the file at <path>.
  * Returns whether an existing file was overwritten.
  */
 bool_t filewrite(string_t path, string_t data) {
@@ -33,17 +38,25 @@ bool_t filewrite(string_t path, string_t data) {
     if (!FAT32.mounted) {
         return false;
     }
+    FAT32_directory_t dir = FAT32_find(path);
+    if (DIRECTORY_END(dir)) {
+        return false;
+    }
     // TODO
     return false;
 }
 
 /**
- * Appends the given data to the given file path.
+ * Appends <data> to the file at <path>.
  * Returns whether an existing file was appended to.
  */
 bool_t fileappend(string_t path, string_t data) {
     assert(path != NULL, "fileappend() - path was NULL!");
     if (!FAT32.mounted) {
+        return false;
+    }
+    FAT32_directory_t dir = FAT32_find(path);
+    if (DIRECTORY_END(dir)) {
         return false;
     }
     // TODO
@@ -54,44 +67,78 @@ bool_t fileappend(string_t path, string_t data) {
  * Moves the file from <start> to <end>.
  * Returns whether an existing file was overwritten at <end>.
  */
-bool_t filemove(string_t start, string_t end) {
-    assert(start != NULL, "filemove() - start was NULL!");
+bool_t filemove(string_t end, string_t start) {
     assert(end != NULL, "filemove() - end was NULL!");
+    assert(start != NULL, "filemove() - start was NULL!");
     if (!FAT32.mounted) {
         return false;
     }
+    FAT32_directory_t start_dir = FAT32_find(start);
+    if (DIRECTORY_END(start_dir)) {
+        return false;
+    }
+    FAT32_directory_t end_dir = FAT32_find(end);
     // TODO
     return false;
 }
 
-/** Deletes the file at the given path and returns whether a file was erased. */
+/** Deletes the file at <path> and returns whether a file was erased. */
 bool_t filedelete(string_t path) {
     assert(path != NULL, "filedelete() - path was NULL!");
     if (!FAT32.mounted) {
+        return NOT_FOUND;
+    }
+    FAT32_directory_t dir = FAT32_find(path);
+    if (DIRECTORY_END(dir)) {
         return false;
     }
-    // TODO
-    return false;
+    return FAT32_free(DIRECTORY_CLUSTER(dir), strfirst(path, '.') == NOT_FOUND);
 }
 
-/** Returns whether a file exists and writes its size into <size>. */
+/** Returns whether a file exists at <path> and writes its size into <size>. */
 bool_t filesize(string_t path, uint_t *size) {
     assert(path != NULL, "filesize() - path was NULL!");
     if (!FAT32.mounted) {
+        return NOT_FOUND;
+    }
+    FAT32_directory_t dir = FAT32_find(path);
+    if (DIRECTORY_END(dir)) {
         return false;
     }
-    // TODO
-    return false;
+    if (size != NULL) {
+        *size = dir.size;
+    }
+    return true;
 }
 
-/** Fills <list> with the first <size> names of each file in <dir> and returns the number of files. */
-uint_t filelist(string_t dir, uint_t size, char_t **list) {
-    assert(dir != NULL, "filelist() - dir was NULL!");
+/** Fills <list> with the first <size> names of each file in <path> and returns the number of files. */
+uint_t filelist(string_t path, uint_t size, char_t **list) {
+    assert(path != NULL, "filelist() - dir was NULL!");
     if (!FAT32.mounted) {
-        return false;
+        return NOT_FOUND;
     }
-    // TODO
-    return false;
+    FAT32_directory_t file = FAT32_find(path);
+    if (DIRECTORY_END(file)) {
+        return 0;
+    }
+    FAT32_directory_t *start = (FAT32_directory_t *) FAT32_load(DIRECTORY_CLUSTER(file),ALL_CLUSTERS);
+    if (start == NULL) {
+        return 0;
+    }
+    FAT32_directory_t *iter = start;
+    uint_t count = 0;
+    for (; !DIRECTORY_END(*iter) && size > 0; ++iter) {
+        if (iter->name[0] == FAT32_DIRECTORY_SKIP ||
+            strcompare(iter->name, ".") == EQUAL_TO ||
+            strcompare(iter->name, "..") == EQUAL_TO) {
+            continue;
+        }
+        copy(list[count], iter->name, ARRAY_SIZE(iter->name) + ARRAY_SIZE(iter->extension));
+        --size;
+        ++count;
+    }
+    free(start);
+    return count;
 }
 
 /** Mounts the given FAT32 partition as the current hard drive, if possible. */
@@ -117,7 +164,16 @@ bool_t mount(ATA_port_t port, byte_t drive, uint_t start) {
             FAT32.start = start;
             FAT32.boot = boot;
             FAT32.FS = FS;
-            FAT32.dir = "";
+            free(FAT32.table);
+            FAT32.table = malloc(SECTOR_SIZE * boot.FAT_size32);
+            assert(FAT32.table != NULL, "mount() - Could not allocate a FAT!");
+            secread(
+                port,
+                drive,
+                start + boot.reserved_count,
+                boot.FAT_size32,
+                (char_t *) FAT32.table
+            );
             return true;
         }
         return false;
@@ -142,7 +198,7 @@ bool_t mount(ATA_port_t port, byte_t drive, uint_t start) {
 bool_t format(ATA_port_t port, byte_t drive, uint_t start, uint_t clus_count, uint_t part_size, bool_t force) {
     assert(sizeof(FAT32_boot_t) == SECTOR_SIZE, "format() - FAT32_boot_t is not one sector wide!");
     assert(sizeof(FAT32_FS_t) == SECTOR_SIZE, "format() - FAT32_FS_t structure is not one sector wide!");
-    assert(sizeof(FAT32_table_t) == SECTOR_SIZE, "format() - FAT32_table_t structure is not one sector wide!");
+    assert(sizeof(FAT32_directory_t) == 32, "format() - FAT32_directory_t structure is not 32 bytes wide!");
     assert(port == ATA_PRIMARY_PORT || port == ATA_SECONDARY_PORT, "format() - port was invalid!");
     assert(drive == ATA_MASTER_DRIVE || drive == ATA_SLAVE_DRIVE, "format() - drive was invalid!");
     assert(clus_count > 0 && (clus_count & (clus_count - 1)) == 0, "format() - clus_count is not power of 2!");
@@ -242,16 +298,16 @@ bool_t format(ATA_port_t port, byte_t drive, uint_t start, uint_t clus_count, ui
     FS.lead_signature = LEAD_SIGNATURE;
     set(FS.reserved1, 0, ARRAY_SIZE(FS.reserved1));
     FS.struct_signature = STRUCT_SIGNATURE;
-    FS.free = clusters - 2;
+    FS.free = 0xFFFFFFFF;
     FS.next = 2;
     set(FS.reserved2, 0, ARRAY_SIZE(FS.reserved2));
     FS.boot_signature = BOOT_SIGNATURE;
     secwrite(port, drive, start + 1, 1, (char_t *) &FS);
     // FAT sectors
-    FAT32_table_t table = {0};
+    FAT32_cluster_t table[128];
     for (uint_t i = 0; i < boot.FAT_count; ++i) {
-        table.entries[0] = FAT32_RESERVED;
-        table.entries[1] = FAT32_END;
+        table[0] = FAT32_CLUSTER_RESERVED;
+        table[1] = FAT32_CLUSTER_END;
         secwrite(
             port,
             drive,
@@ -259,8 +315,8 @@ bool_t format(ATA_port_t port, byte_t drive, uint_t start, uint_t clus_count, ui
             1,
             (char_t *) &table
         );
-        table.entries[0] = 0;
-        table.entries[1] = 0;
+        table[0] = 0;
+        table[1] = 0;
         for (uint_t j = 1; j < boot.FAT_size32; ++j) {
             secwrite(
                 port,
@@ -283,23 +339,108 @@ bool_t format(ATA_port_t port, byte_t drive, uint_t start, uint_t clus_count, ui
     return true;
 }
 
-/** Allocates a new file entry for the mounted FAT32 instance at <path>. Returns the new entry or NOT_FOUND. */
-FAT32_entry_t FAT32_alloc(string_t path, uint_t size, FAT32_attributes_t attr) {
+/** Allocates new clusters for the mounted FAT32 instance at <path>. Returns the first cluster entry or NOT_FOUND. */
+FAT32_cluster_t FAT32_alloc(string_t path, uint_t size, FAT32_attributes_t attr) {
     assert(path != NULL, "FAT32_alloc() - path was NULL!");
     assert(attr != 0, "FAT32_alloc() - attr was empty!");
+    if (!FAT32.mounted) {
+        return NOT_FOUND;
+    }
+    // TODO
     return NOT_FOUND;
 }
 
-/** Finds a file entry for the mounted FAT32 instance at <path>. Returns the new entry or NOT_FOUND. */
-FAT32_entry_t FAT32_find(string_t path) {
+/** Loads all of <clus> for the mounted FAT32 instance into memory. This pointer must be freed! */
+void *FAT32_load(FAT32_cluster_t clus, uint_t max) {
+    if (!FAT32.mounted || CLUSTER_END(clus)) {
+        return NULL;
+    }
+    assert(
+        clus < ((FAT32.boot.FAT_size32 * FAT32.boot.sector_size) / sizeof(FAT32_cluster_t)),
+        "FAT32_load() - Invalid cluster entry!"
+    );
+    FAT32_cluster_t start = clus;
+    uint_t count = 0;
+    while (!CLUSTER_END(clus) && count < max) {
+        clus = FAT32.table[clus];
+        ++count;
+    }
+    clus = start;
+    void *mem = malloc(FAT32.boot.cluster_size * count * FAT32.boot.sector_size);
+    if (mem == NULL) {
+        return NULL;
+    }
+    for (uint_t i = 0; i < count; ++i) {
+        secread(
+            FAT32.port,
+            FAT32.drive,
+            CLUSTER_TO_SECTOR(clus),
+            FAT32.boot.cluster_size,
+            ((char_t *) mem) + FAT32.boot.cluster_size * FAT32.boot.sector_size * i
+        );
+        clus = FAT32.table[clus];
+    }
+    return mem;
+}
+
+/** Returns the directory entry for the file at <path>. name[0] is FAT32_DIRECTORY_END on failure. */
+FAT32_directory_t FAT32_find(string_t path) {
     assert(path != NULL, "FAT32_find() - path was NULL!");
-    return NOT_FOUND;
+    if (!FAT32.mounted) {
+        return (FAT32_directory_t){0};
+    }
+    FAT32_directory_t dir;
+    // TODO
+    return dir;
 }
 
-/** Frees the file entry for the mounted FAT32 instance at <path>. Returns whether it was successful. */
-bool_t FAT32_free(FAT32_entry_t entry) {
+/** Frees the cluster train for the mounted FAT32 instance at <clus>. Returns whether it was successful. */
+bool_t FAT32_free(FAT32_cluster_t clus, bool_t dir) {
+    if (!FAT32.mounted || CLUSTER_END(clus)) {
+        return false;
+    }
+    assert(
+        clus < ((FAT32.boot.FAT_size32 * FAT32.boot.sector_size) / sizeof(FAT32_cluster_t)),
+        "FAT32_free() - Invalid cluster entry!"
+    );
+    if (dir) {
+        FAT32_directory_t *start = (FAT32_directory_t *) FAT32_load(clus,ALL_CLUSTERS);
+        if (start == NULL) {
+            return false;
+        }
+        FAT32_directory_t *iter = start;
+        for (; !DIRECTORY_END(*iter); ++iter) {
+            if (iter->name[0] == FAT32_DIRECTORY_SKIP ||
+                strcompare(iter->name, ".") == EQUAL_TO ||
+                strcompare(iter->name, "..") == EQUAL_TO) {
+                continue;
+            }
+            FAT32_cluster_t target = DIRECTORY_CLUSTER(*iter);
+            if ((iter->attributes & FAT32_ATTRIBUTE_DIRECTORY) != 0) {
+                FAT32_free(target, true);
+            }
+            if ((iter->attributes & FAT32_ATTRIBUTE_FILE) != 0) {
+                FAT32_free(target, false);
+            }
+        }
+        free(start);
+    }
+    while (!CLUSTER_END(clus)) {
+        FAT32_cluster_t next = FAT32.table[clus];
+        FAT32.table[clus] = FAT32_CLUSTER_FREE;
+        clus = next;
+    }
+    for (uint_t i = 0; i < FAT32.boot.FAT_count; ++i) {
+        secwrite(
+            FAT32.port,
+            FAT32.drive,
+            FAT32.start + FAT32.boot.reserved_count + (FAT32.boot.FAT_size32 * i),
+            FAT32.boot.FAT_size32,
+            (char_t *) FAT32.table
+        );
+    }
+    return true;
 }
-
 
 /** Reads <num> number of 512-byte sectors at <sec> into <str>. */
 char_t *secread(ATA_port_t port, byte_t drive, uint_t sec, uint_t num, char_t *str) {

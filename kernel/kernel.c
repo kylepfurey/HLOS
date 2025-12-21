@@ -51,9 +51,7 @@ void kernel_main() {
                 i = strlast(dir, '.');
                 if (i != NOT_FOUND) {
                     if (strcompare(strlower(dir + i + 1), "txt") == EQUAL_TO) {
-                        if (filesize(dir, &i)) {
-                            fileread(dir, 0, i);
-                        } else {
+                        if (!fileread(dir, 0, i, text)) {
                             text[0] = '\0';
                         }
                         strcopy(text, textedit(text));
@@ -111,7 +109,6 @@ void kernel_main() {
             case SELECTION_SHUTDOWN:
                 color(VGA_COLOR_GREEN, VGA_COLOR_BLACK);
                 print("\n\nGoodbye!");
-                free((void *) FAT32.dir);
                 shutdown(1000);
                 break;
         }
@@ -310,7 +307,7 @@ string_t directory(string_t prompt, string_t operation) {
     print(datestr(date(), false));
     color(VGA_COLOR_BROWN, VGA_COLOR_BLACK);
     char_t list[5][VGA_SIZE - 2];
-    uint_t size = filelist(FAT32.dir, 5, (char_t **) list);
+    uint_t size = filelist("", 5, (char_t **) list);
     print("\n\nHLOS/FILES/");
     print(operation);
     print("\n\n");
