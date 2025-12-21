@@ -259,10 +259,9 @@ bool_t format(ATA_port_t port, byte_t drive, uint_t start, uint_t clus_count, ui
  */
 FAT32_directory_t FAT32_alloc(
     string_t path,
-    uint_t num,
-    FAT32_attributes_t attr,
     uint_t size,
     string_t data,
+    FAT32_attributes_t attr,
     FAT32_cluster_t *clus
 );
 
