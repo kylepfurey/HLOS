@@ -33,7 +33,7 @@ init_stack16:
 ; Loads the kernel from disk
 load_kernel:
 	mov ah, 0x2						; Set BIOS read sectors function
-	mov al, 59						; Set number of sectors (kernel size / 512 rounded up)
+	mov al, 71						; Set number of sectors (kernel size / 512 rounded up)
 	mov ch, 0x0						; Set cylinder 0
 	mov cl, 0x2						; Set sector after bootloader
 	mov dh, 0x0						; Set head 0
@@ -238,7 +238,7 @@ db 0x0								; Boot flag
 db 0xFF,0xFF,0xFF					; CHS start
 db 0xC								; FAT32 partition
 db 0xFF,0xFF,0xFF					; CHS end
-dd 64								; Partition location (64th sector)
+dd 80								; Partition location (80th sector)
 dd 1000000							; Partition size (512 megabytes)
 times 16*3 db 0x0					; Pad boot sector to 512 bytes
 dw 0xAA55							; Boot signature

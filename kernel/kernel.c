@@ -51,12 +51,21 @@ void kernel_main() {
                 i = strlast(dir, '.');
                 if (i != NOT_FOUND) {
                     if (strcompare(strlower(dir + i + 1), "txt") == EQUAL_TO) {
-                        if (!fileread(dir, 0, i, text)) {
-                            text[0] = '\0';
+                        if (fileread(dir, 0, ALL_BYTES, text)) {
+                            strcopy(text, textedit(text));
+                        } else {
+                            color(VGA_COLOR_RED, VGA_COLOR_BLACK);
+                            print("\n\nFile not found!");
+                            sleep(1000);
                         }
-                        strcopy(text, textedit(text));
                     } else if (strcompare(dir + i + 1, "exe") == EQUAL_TO) {
-                        call(dir);
+                        if (fileread(dir, 0, i, text)) {
+                            call(text);
+                        } else {
+                            color(VGA_COLOR_RED, VGA_COLOR_BLACK);
+                            print("\n\nFile not found!");
+                            sleep(1000);
+                        }
                     } else {
                         color(VGA_COLOR_RED, VGA_COLOR_BLACK);
                         print("\n\nUnknown file type!");
@@ -88,7 +97,7 @@ void kernel_main() {
                 break;
             case SELECTION_FILES_FORMAT:
                 color(VGA_COLOR_LIGHT_RED, VGA_COLOR_BLACK);
-                print("\n\nFormatting FAT32 hard drive . . .");
+                print("\n\nFormatting drive to FAT32 . . .");
                 format(
                     ATA_PRIMARY_PORT,
                     ATA_MASTER_DRIVE,
@@ -99,7 +108,7 @@ void kernel_main() {
                 );
                 color(VGA_COLOR_GREEN, VGA_COLOR_BLACK);
                 print(" Formatting successful!\n\n");
-                color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
+                color(VGA_COLOR_YELLOW, VGA_COLOR_BLACK);
                 print("Rebooting . . .");
                 reboot(1000);
                 break;
@@ -307,14 +316,16 @@ string_t directory(string_t prompt, string_t operation) {
     print(datestr(date(), false));
     color(VGA_COLOR_BROWN, VGA_COLOR_BLACK);
     char_t list[5][VGA_SIZE - 2];
-    uint_t size = filelist("", 5, (char_t **) list);
+    uint_t size = filelist("/", 5, (char_t **) list);
     print("\n\nHLOS/FILES/");
     print(operation);
     print("\n\n");
     color(VGA_COLOR_LIGHT_BLUE, VGA_COLOR_BLACK);
     for (uint_t i = 0; i < 5; ++i) {
         print("- ");
-        print(list[i]);
+        if (i < size) {
+            print(list[i]);
+        }
         printchar('\n');
     }
     color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
@@ -322,5 +333,5 @@ string_t directory(string_t prompt, string_t operation) {
     print(prompt);
     print(".\n\n> ");
     color(VGA_COLOR_YELLOW, VGA_COLOR_BLACK);
-    return read(VGA_WIDTH - 2, false, NULL);
+    return read(VGA_WIDTH - 2, false, "/");
 }

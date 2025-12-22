@@ -28,26 +28,8 @@ static void keyboard_init() {
 
 /** Initializes memory paging, virtual addressing, and the heap. */
 static void heap_init() {
-    set(&__page_directory_start, 0, ((byte_t *) &__page_table_end) - ((byte_t *) &__page_directory_start));
-    for (byte_t *page = &__kernel_heap_start; page < &__kernel_heap_end; page += PAGE_SIZE) {
-        pagefree((page_t *) page);
-    }
-    for (byte_t *page = &__stack_end; page < &__stack_start; page += PAGE_SIZE) {
-        map(
-            page,
-            page,
-            PDE_FLAGS_PRESENT | PDE_FLAGS_WRITABLE,
-            PTE_FLAGS_PRESENT | PTE_FLAGS_WRITABLE
-        );
-    }
-    for (byte_t *page = &__kernel_start; page < &__kernel_end; page += PAGE_SIZE) {
-        map(
-            page,
-            page,
-            PDE_FLAGS_PRESENT | PDE_FLAGS_WRITABLE,
-            PTE_FLAGS_PRESENT | PTE_FLAGS_WRITABLE
-        );
-    }
+    set(&__page_directory_start, 0, (&__page_directory_end) - (&__page_directory_start));
+    set(&__page_table_start, 0, (&__page_table_end) - (&__page_table_start));
     for (byte_t *page = &__kernel_heap_start; page < &__kernel_heap_end; page += PAGE_SIZE) {
         map(
             page,
@@ -63,24 +45,36 @@ static void heap_init() {
     free_block->size = (uint_t) ((&__kernel_heap_end - &__kernel_heap_start) - sizeof(block_t));
     free_block->next = NULL;
     IDT_bind(PAGE_FAULT, page_fault_interrupt, IDT_KERNEL_SELECTOR, IDT_KERNEL_FLAGS);
-    enable_paging();
+    //enable_paging();
 }
 
 /** Mounts FAT32. */
 static void FAT32_init() {
+    clear();
+    color(VGA_COLOR_YELLOW, VGA_COLOR_BLACK);
+    print("Mounting drive . . .");
     if (!mount(ATA_PRIMARY_PORT, ATA_MASTER_DRIVE, FAT32_START)) {
         clear();
+        color(VGA_COLOR_LIGHT_RED, VGA_COLOR_BLACK);
         print("Formatting empty drive to FAT32 . . .");
-        format(
-            ATA_PRIMARY_PORT,
-            ATA_MASTER_DRIVE,
-            FAT32_START,
-            1,
-            FAT32_SIZE,
-            false
+        color(VGA_COLOR_GREEN, VGA_COLOR_BLACK);
+        assert(
+            format(
+                ATA_PRIMARY_PORT,
+                ATA_MASTER_DRIVE,
+                FAT32_START,
+                1,
+                FAT32_SIZE,
+                false
+            ),
+            "FAT32_init() - Formatting failed!"
         );
-        mount(ATA_PRIMARY_PORT, ATA_MASTER_DRIVE, FAT32_START);
+        print(" Formatting successful!\n\n");
+        color(VGA_COLOR_YELLOW, VGA_COLOR_BLACK);
+        print("Rebooting . . .");
+        reboot(1000);
     }
+    color(VGA_COLOR_LIGHT_GRAY, VGA_COLOR_BLACK);
 }
 
 /** Initializes the kernel. */

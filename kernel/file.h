@@ -16,6 +16,12 @@
 /** Advanced Technology Attachment slave drive command. */
 #define ATA_SLAVE_DRIVE 0xF0
 
+/** Floppy disk media signature. */
+#define FLOPPY_MEDIA 0xF0
+
+/** Hard disk media signature. */
+#define HARD_MEDIA 0xF8
+
 /** The boot sector's signature. */
 #define BOOT_SIGNATURE 0xAA55
 
@@ -46,11 +52,11 @@
 /** Loads the entire file into memory. */
 #define ALL_BYTES ((uint_t) -1)
 
-/** The maximum length of a file name (including null-terminator). */
+/** The maximum length of a file name (including dot and null-terminator). */
 #define FILE_NAME_LEN 13
 
 /** The sector FAT32 resides on disk. */
-#define FAT32_START 64
+#define FAT32_START 80
 
 /** The size in sectors of FAT32. */
 #define FAT32_SIZE 1048576
@@ -107,7 +113,7 @@ typedef enum FAT32_attributes {
 typedef enum FAT32_state {
     FAT32_CLUSTER_FREE = 0x0,
     FAT32_CLUSTER_BAD = 0xFFFFFFF7,
-    FAT32_CLUSTER_RESERVED = 0xFFFFFF8,
+    FAT32_CLUSTER_RESERVED = 0xFFFFFFF8,
     FAT32_CLUSTER_END = 0xFFFFFFFF,
     FAT32_DIRECTORY_SKIP = 0xE5,
     FAT32_DIRECTORY_END = 0x0,
@@ -162,9 +168,6 @@ typedef struct FAT32_FS {
 /** A single File Allocation Table (32-bit) cluster entry. */
 typedef uint_t FAT32_cluster_t;
 
-/** File Allocation Table (32-bit) sectors. */
-typedef FAT32_cluster_t *FAT32_t;
-
 /** File Allocation Table (32-bit) directory. */
 typedef struct FAT32_directory {
     char_t name[8];
@@ -205,7 +208,7 @@ typedef struct FAT32_cache {
     FAT32_FS_t FS;
 
     /** Cached data for the FAT32 sectors. */
-    FAT32_t table;
+    FAT32_cluster_t *table;
 } FAT32_cache_t;
 
 /** Cached data for the mounted File Allocation Table (32-bit). */
@@ -243,9 +246,9 @@ bool_t filesize(string_t path, uint_t *size);
 
 /**
  * Fills <list> with the first <size> names of each file in <path> and returns the number of files.
- * Each <list> entry must be at least FILE_NAME_LEN characters.
+ * <list> must be at least FILE_NAME_LEN * <size> characters.
  */
-uint_t filelist(string_t path, uint_t size, char_t **list);
+uint_t filelist(string_t path, uint_t size, char_t *list);
 
 /** Mounts the given FAT32 partition as the current hard drive, if possible. */
 bool_t mount(ATA_port_t port, byte_t drive, uint_t start);
@@ -254,7 +257,7 @@ bool_t mount(ATA_port_t port, byte_t drive, uint_t start);
 bool_t format(ATA_port_t port, byte_t drive, uint_t start, uint_t clus_count, uint_t part_size, bool_t force);
 
 /**
- * Allocates new clusters for the mounted FAT32 instance at <path>. <clus> is set to the new directory's cluster.
+ * Allocates new clusters for the mounted FAT32 instance at <path>. <clus> is set to the cluster of the created directory.
  * Returns the new directory. name[0] is FAT32_DIRECTORY_END on failure.
  */
 FAT32_directory_t FAT32_alloc(
@@ -262,6 +265,7 @@ FAT32_directory_t FAT32_alloc(
     uint_t size,
     string_t data,
     FAT32_attributes_t attr,
+    bool_t force,
     FAT32_cluster_t *clus
 );
 
@@ -269,18 +273,18 @@ FAT32_directory_t FAT32_alloc(
 void *FAT32_load(FAT32_cluster_t clus, uint_t max);
 
 /**
- * Returns the directory for the file at <path>. <clus> is set to the directory's cluster.
+ * Returns the directory for the file at <path>. <clus> is set to the cluster of the found directory.
  * name[0] is FAT32_DIRECTORY_END on failure.
  */
 FAT32_directory_t FAT32_find(string_t path, FAT32_cluster_t *clus);
 
-/** Frees the cluster train for the mounted FAT32 instance at <clus>. Returns whether it was successful. */
-bool_t FAT32_free(FAT32_cluster_t clus, bool_t dir);
+/** Frees the cluster chain for the mounted FAT32 instance at <path>. Returns whether it was successful. */
+bool_t FAT32_free(string_t path);
 
 /** Reads <num> number of 512-byte sectors at <sec> into <str>. */
-char_t *secread(ATA_port_t port, byte_t drive, uint_t sec, uint_t num, char_t *str);
+char_t *secread(ATA_port_t port, byte_t drive, uint_t sec, byte_t num, char_t *str);
 
 /** Writes <str> into <num> number of 512-byte sectors at <sec>. */
-string_t secwrite(ATA_port_t port, byte_t drive, uint_t sec, uint_t num, string_t str);
+string_t secwrite(ATA_port_t port, byte_t drive, uint_t sec, byte_t num, string_t str);
 
 #endif // HLOS_FILE_H

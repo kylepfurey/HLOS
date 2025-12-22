@@ -24,20 +24,20 @@ SECTIONS {
 		__bss_end = .;
 	}
 	__kernel_end = .;
-	.page_directory 0x10000 : {			/** Reserve page directory after kernel */
+	.page_directory 0x20000 : {			/** Reserve page directory after kernel */
 		__page_directory_start = .;
 		. = . + 0x1000;					/** Reserve 4 kilobytes */
 		__page_directory_end = .;
 	}
-	.page_table 0x11000 : {				/** Reserve page table after page directory */
+	.page_table 0x21000 : {				/** Reserve page table after page directory */
 		__page_table_start = .;
 		. = . + 0x1000;					/** Reserve 4 kilobytes */
 		__page_table_end = .;
 	}
-	. = 0x12000;						/** Reserve kernel heap after page table */
+	. = 0x100000;						/** Reserve kernel heap after page table */
 	__kernel_heap_start = .;
 	.heap (NOLOAD) : {
-		. = . + 16M;					/** Reserve 16 megabytes for the kernel heap */
+		. = . + 32M;					/** Reserve 32 megabytes for the kernel heap */
 	}
 	__kernel_heap_end = .;
 	__heap_start = .;					/** Rest is user heap memory */

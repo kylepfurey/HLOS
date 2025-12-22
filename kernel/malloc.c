@@ -74,6 +74,9 @@ void *malloc(uint_t size) {
 /** Allocates and zeroes out an array of the given size and count on the heap. */
 void *calloc(uint_t count, uint_t size) {
     uint_t total = count * size;
+    if (count != 0 && total / count != size) {
+        return NULL; // Overflow detected
+    }
     byte_t *alloc = (byte_t *) malloc(total);
     if (alloc == NULL) {
         return NULL; // malloc() can safely fail
