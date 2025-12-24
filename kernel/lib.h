@@ -16,6 +16,9 @@
 /** Crashes the kernel with an error. */
 #define panic(err) assert(false, err)
 
+/** Inserts a breakpoint for a line of code. */
+#define bp(code) step(#code); code
+
 /** Halts the kernel. */
 void pause();
 
@@ -27,6 +30,9 @@ void reboot(uint_t ms);
 
 /** Crashes the kernel with an error if the given condition is false. */
 void assert(bool_t cond, string_t err);
+
+/** Enables stepping through the kernel via keyboard input. */
+void step(string_t msg);
 
 /** Returns the lesser number. */
 int_t min(int_t a, int_t b);

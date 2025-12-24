@@ -464,20 +464,27 @@ FAT32_directory_t FAT32_alloc(
     FAT32_directory_t *dir_iter = array;
     FAT32_cluster_t clus_iter = first_dir_clus;
     char_t *array_iter = (char_t *) array;
+    uint_t dir_total = 0;
+    while (!CLUSTER_END(clus_iter)) {
+        clus_iter = FAT32.table[clus_iter];
+        ++dir_total;
+    }
+    clus_iter = first_dir_clus;
+    uint_t clus_dir_total = clus_size / sizeof(FAT32_directory_t);
+    dir_total *= clus_dir_total;
     uint_t dir_count = 2;
-    uint_t dir_total = clus_size / sizeof(FAT32_directory_t);
-    for (dir_iter += 2; !DIRECTORY_END(*dir_iter); ++dir_iter) {
-        if (dir_count % dir_total == 0) {
+    for (dir_iter += 2; dir_count <= dir_total; ++dir_iter) {
+        if (dir_count % clus_dir_total == 0) {
             clus_iter = FAT32.table[clus_iter];
             array_iter += clus_size;
         }
-        if (dir_iter->name[0] == FAT32_DIRECTORY_SKIP) {
+        if (DIRECTORY_END(*dir_iter) || dir_iter->name[0] == FAT32_DIRECTORY_SKIP) {
             break;
         }
         ++dir_count;
     }
     // Out of directory entries, allocate a new cluster
-    if (DIRECTORY_END(*dir_iter)) {
+    if (dir_count > dir_total) {
         free(array);
         array = NULL;
         FAT32_cluster_t last_dir_clus = first_dir_clus;

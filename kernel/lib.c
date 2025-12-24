@@ -42,16 +42,57 @@ void reboot(uint_t ms) {
 /** Crashes the kernel with an error if the given condition is false. */
 void assert(bool_t cond, string_t err) {
     if (!cond) {
+        cli();
         for (uint_t i = 0; i < MAX_COROUTINES; ++i) {
             coroutines[i].callback = NULL;
         }
         pos(0, 0);
         color(VGA_COLOR_WHITE, VGA_COLOR_RED);
         print("ASSERTION FAILED: ");
-        print(err);
+        if (err != NULL) {
+            print(err);
+        }
         printchar('\n');
         pause();
     }
+}
+
+/** Enables stepping through the kernel via keyboard input. */
+void step(string_t msg) {
+    // Freeze VGA in place
+    cli();
+    byte_t col = VGA.column;
+    byte_t row = VGA.row;
+    byte_t old_color = VGA.color;
+    VGA_char_t array[VGA_SIZE];
+    for (uint_t i = 0; i < VGA_SIZE; ++i) {
+        array[i] = VGA.array[i];
+    }
+    // Print message
+    pos(0, 0);
+    color(VGA_COLOR_BLACK, VGA_COLOR_YELLOW);
+    print("BREAKPOINT: ");
+    if (msg != NULL) {
+        print(msg);
+    }
+    printchar('\n');
+    // Restore VGA
+    VGA.column = col;
+    VGA.row = row;
+    VGA.color = old_color;
+    // Await input
+    sti();
+    char_t c = '\0';
+    do {
+        scan(NULL, &c);
+    } while (c == '\0');
+    // Restore VGA
+    cli();
+    for (uint_t i = 0; i < VGA_SIZE; ++i) {
+        VGA.array[i] = array[i];
+    }
+    // Continue
+    sti();
 }
 
 /** Returns the lesser number. */
