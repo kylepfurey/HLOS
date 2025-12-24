@@ -95,6 +95,26 @@ void step(string_t msg) {
     sti();
 }
 
+/** Allows raw memory to be easily inspected as a string. */
+string_t dump(uint_t size, void *addr) {
+    assert(addr != NULL, "dump() - addr was NULL!");
+    size = min((int_t) size, VGA_SIZE);
+    static char_t buffer[VGA_SIZE];
+    if (size <= sizeof(int_t)) {
+        int_t *num = (int_t *) addr;
+        strcopy(buffer, intstr(*num));
+        return buffer;
+    }
+    copy(buffer, (char_t *) addr, size);
+    for (uint_t i = 0; i < size; ++i) {
+        if (buffer[i] == '\0') {
+            buffer[i] = ' ';
+        }
+    }
+    buffer[size] = '\0';
+    return buffer;
+}
+
 /** Returns the lesser number. */
 int_t min(int_t a, int_t b) {
     return a < b ? a : b;

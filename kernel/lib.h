@@ -19,6 +19,9 @@
 /** Inserts a breakpoint for a line of code. */
 #define bp(code) step(#code); code
 
+/** Converts raw memory into a string. */
+#define tostr(mem) dump(sizeof(mem), &mem)
+
 /** Halts the kernel. */
 void pause();
 
@@ -33,6 +36,9 @@ void assert(bool_t cond, string_t err);
 
 /** Enables stepping through the kernel via keyboard input. */
 void step(string_t msg);
+
+/** Allows raw memory to be easily inspected as a string. */
+string_t dump(uint_t size, void *addr);
 
 /** Returns the lesser number. */
 int_t min(int_t a, int_t b);
