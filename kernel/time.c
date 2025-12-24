@@ -2,10 +2,7 @@
 // OS Time and Sleep Functions
 // by Kyle Furey
 
-#include "time.h"
-#include "lib.h"
-#include "assembly.h"
-#include "event.h"
+#include "hlos.h"
 
 /** The number of ticks since the kernel started. */
 volatile uint_t ticks = 0;

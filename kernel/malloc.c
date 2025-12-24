@@ -2,16 +2,13 @@
 // OS Memory Allocation Functions
 // by Kyle Furey
 
-#include "malloc.h"
-#include "lib.h"
-#include "assembly.h"
-#include "init.h"
+#include "hlos.h"
 
 /** The global Page Directory. */
 volatile page_directory_t *page_directory = (volatile page_directory_t *) &__page_directory_start;
 
-/** The global Page Table. */
-volatile page_table_t *page_table = (volatile page_table_t *) &__page_table_start;
+/** The start of the global Page Tables. */
+volatile page_table_t *page_tables = (volatile page_table_t *) &__page_tables_start;
 
 /** The next free memory page. */
 page_t *free_page = NULL;
@@ -61,8 +58,8 @@ void *malloc(uint_t size) {
         map(
             page,
             page,
-            PDE_FLAGS_PRESENT | PDE_FLAGS_WRITABLE | PDE_FLAGS_USER_MODE,
-            PTE_FLAGS_PRESENT | PTE_FLAGS_WRITABLE | PTE_FLAGS_USER_MODE
+            PDE_FLAGS_DEFAULT,
+            PTE_FLAGS_DEFAULT
         );
         block_t *new_block = (block_t *) page;
         new_block->size = PAGE_SIZE - sizeof(block_t);
@@ -145,11 +142,8 @@ void pagefree(page_t *page) {
     free_page = page;
 }
 
-/**
- * Maps the given physical memory address to the given virtual memory address with the given flags.
- * Returns whether memory was successfully mapped.
- */
-bool_t map(void *phys, void *virt, PDE_flags_t dir_flags, PTE_flags_t table_flags) {
+/** Maps the given physical memory address to the given virtual memory address with the given flags. */
+void map(void *phys, void *virt, PDE_flags_t dir_flags, PTE_flags_t table_flags) {
     assert(phys != NULL, "map() - phys was NULL!");
     assert(virt != NULL, "map() - virt was NULL!");
     assert(((uint_t) phys & (PAGE_SIZE - 1)) == 0, "map() - phys was not aligned to PAGE_SIZE!");
@@ -159,21 +153,14 @@ bool_t map(void *phys, void *virt, PDE_flags_t dir_flags, PTE_flags_t table_flag
     page_table_t *table;
     if ((page_directory->entries[directory_index] & PDE_FLAGS_PRESENT) == 0) {
         table = (page_table_t *) pagealloc();
-        if (table == NULL) {
-            return false;
-        }
+        assert(table != NULL, "map() - Could not allocate a memory page!");
         set(table, 0, PAGE_SIZE);
         page_directory->entries[directory_index] = NEW_PAGE_ENTRY(table, dir_flags);
     } else {
         table = (page_table_t *) PAGE_ENTRY_ADDRESS(page_directory->entries[directory_index]);
     }
-    assert(
-        (table->entries[table_index] & PTE_FLAGS_PRESENT) == 0,
-        "map() - Attempting to overwrite an existing page!"
-    );
     table->entries[table_index] = NEW_PAGE_ENTRY(phys, table_flags);
     invlpg(virt);
-    return true;
 }
 
 /** Unmaps the given virtual memory address. */

@@ -2,13 +2,11 @@
 // OS Printing Functions
 // by Kyle Furey
 
-#include "print.h"
-#include "lib.h"
-#include "malloc.h"
+#include "hlos.h"
 
 /** The Video Graphics Array. */
 VGA_t VGA = {
-    (volatile VGA_char_t * const) 0xB8000,
+    (volatile VGA_char_t * const) &__VGA_start,
     0,
     0,
     VGA_COLOR(VGA_COLOR_LIGHT_GRAY, VGA_COLOR_BLACK),

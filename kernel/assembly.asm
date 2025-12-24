@@ -164,7 +164,7 @@ page_fault_interrupt:
 ; Enables memory paging and virtual addressing
 enable_paging:
 	cli								; Disable interrupts
-	mov eax, 0x10000				; Set address of page directory (address must match linker)
+	mov eax, 0x100000				; Set address of page directory (address must match linker)
 	mov cr3, eax					; Write to control register 3
 	mov eax, cr0					; Read from control register 0
 	or eax, 0x80000000				; Enable the paging flag

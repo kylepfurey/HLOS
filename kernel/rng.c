@@ -2,8 +2,7 @@
 // OS Random Number Functions
 // by Kyle Furey
 
-#include "rng.h"
-#include "lib.h"
+#include "hlos.h"
 
 /** The seed for random number generation. */
 uint_t seed = 0xBADA55;

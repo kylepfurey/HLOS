@@ -2,14 +2,11 @@
 // OS Interrupt Callback Functions
 // by Kyle Furey
 
-#include "interrupt.h"
-#include "lib.h"
-#include "assembly.h"
-#include "malloc.h"
+#include "hlos.h"
 
 /** The Interrupt Descriptor Table. */
 IDT_t IDT = {
-    (volatile IDT_entry_t * const) 0x80000,
+    (volatile IDT_entry_t * const) &__IDT_start,
 };
 
 /** Enables hardware with the given Interrupt Request mask. */

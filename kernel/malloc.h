@@ -100,8 +100,8 @@ typedef struct block {
 /** The global Page Directory. */
 extern volatile page_directory_t *page_directory;
 
-/** The global Page Table. */
-extern volatile page_table_t *page_table;
+/** The start of the global Page Tables. */
+extern volatile page_table_t *page_tables;
 
 /** The next free memory page. */
 extern page_t *free_page;
@@ -131,11 +131,8 @@ page_t *pagealloc();
 /** Deallocates a page of memory. */
 void pagefree(page_t *page);
 
-/**
- * Maps the given physical memory address to the given virtual memory address with the given flags.
- * Returns whether memory was successfully mapped.
- */
-bool_t map(void *phys, void *virt, PDE_flags_t dir_flags, PTE_flags_t table_flags);
+/** Maps the given physical memory address to the given virtual memory address with the given flags. */
+void map(void *phys, void *virt, PDE_flags_t dir_flags, PTE_flags_t table_flags);
 
 /** Unmaps the given virtual memory address. */
 void unmap(void *virt);

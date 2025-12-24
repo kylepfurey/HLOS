@@ -2,11 +2,7 @@
 // OS Library Functions
 // by Kyle Furey
 
-#include "lib.h"
-#include "assembly.h"
-#include "read.h"
-#include "time.h"
-#include "event.h"
+#include "hlos.h"
 
 /** Halts the kernel. */
 void pause() {

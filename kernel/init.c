@@ -2,14 +2,7 @@
 // OS Initialization Function
 // by Kyle Furey
 
-#include "init.h"
-#include "lib.h"
-#include "assembly.h"
-#include "interrupt.h"
-#include "time.h"
-#include "malloc.h"
-#include "file.h"
-#include "print.h"
+#include "hlos.h"
 
 /** Initializes the Programmable Interval Timer. */
 static void PIT_init() {
@@ -28,9 +21,20 @@ static void keyboard_init() {
 
 /** Initializes memory paging, virtual addressing, and the heap. */
 static void heap_init() {
-    set(&__page_directory_start, 0, (&__page_directory_end) - (&__page_directory_start));
-    set(&__page_table_start, 0, (&__page_table_end) - (&__page_table_start));
-    for (byte_t *page = &__kernel_heap_start; page < &__kernel_heap_end; page += PAGE_SIZE) {
+    // Zero page directory and page tables
+    set(&__page_directory_start, 0, &__page_tables_end - &__page_directory_start);
+    // Initialize free pages
+    free_page = (page_t *) &__page_tables_start;
+    page_t *current = free_page;
+    page_t *next = (page_t *) (((byte_t *) current) + PAGE_SIZE);
+    while (next < (page_t *) &__page_tables_end) {
+        current->next = next;
+        current = next;
+        next = (page_t *) (((byte_t *) current) + PAGE_SIZE);
+    }
+    current->next = NULL;
+    // Map all virtual addresses
+    for (byte_t *page = (byte_t *) PAGE_SIZE; page < &__kernel_heap_end; page += PAGE_SIZE) {
         map(
             page,
             page,
@@ -38,14 +42,13 @@ static void heap_init() {
             PTE_FLAGS_PRESENT | PTE_FLAGS_WRITABLE
         );
     }
-    for (byte_t *page = &__kernel_heap_start; page < &__kernel_heap_end; page += PAGE_SIZE) {
-        pagefree((page_t *) page);
-    }
+    // Initialize heap
     free_block = (block_t *) &__kernel_heap_start;
-    free_block->size = (uint_t) ((&__kernel_heap_end - &__kernel_heap_start) - sizeof(block_t));
+    free_block->size = (uint_t) (&__kernel_heap_end - &__kernel_heap_start - sizeof(block_t));
     free_block->next = NULL;
+    // Enable paging
     IDT_bind(PAGE_FAULT, page_fault_interrupt, IDT_KERNEL_SELECTOR, IDT_KERNEL_FLAGS);
-    //enable_paging();
+    enable_paging();
 }
 
 /** Mounts FAT32. */

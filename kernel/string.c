@@ -2,8 +2,7 @@
 // OS String Functions
 // by Kyle Furey
 
-#include "string.h"
-#include "lib.h"
+#include "hlos.h"
 
 /** Returns whether the given character is a letter. */
 bool_t isletter(char_t c) {

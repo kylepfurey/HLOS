@@ -2,10 +2,7 @@
 // OS Event and Coroutine Functions
 // by Kyle Furey
 
-#include "event.h"
-#include "lib.h"
-#include "assembly.h"
-#include "time.h"
+#include "hlos.h"
 
 /** Each bound event function. */
 void (*volatile events[MAX_EVENTS])(void *) = {0};

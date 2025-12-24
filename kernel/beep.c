@@ -2,10 +2,7 @@
 // OS Beep Sound Functions
 // by Kyle Furey
 
-#include "beep.h"
-#include "lib.h"
-#include "assembly.h"
-#include "time.h"
+#include "hlos.h"
 
 /** Beeps the computer. */
 void beep() {

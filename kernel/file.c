@@ -2,10 +2,7 @@
 // OS File IO Functions
 // by Kyle Furey
 
-#include "file.h"
-#include "lib.h"
-#include "assembly.h"
-#include "malloc.h"
+#include "hlos.h"
 
 /** Cached data for the mounted File Allocation Table (32-bit). */
 FAT32_cache_t FAT32 = {0};

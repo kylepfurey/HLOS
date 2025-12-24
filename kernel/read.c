@@ -2,10 +2,7 @@
 // OS Input Reading Functions
 // by Kyle Furey
 
-#include "read.h"
-#include "lib.h"
-#include "assembly.h"
-#include "time.h"
+#include "hlos.h"
 
 /** A mapping of each scancode to a keyboard character. */
 const char_t SCANCHAR[SCANCODE_COUNT] = {
