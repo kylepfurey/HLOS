@@ -5,7 +5,7 @@
 #ifndef HLOS_READ_H
 #define HLOS_READ_H
 
-#include "print.h"
+#include "types.h"
 
 /** Keyboard data port. */
 #define KEYBOARD_DATA_PORT 0x60

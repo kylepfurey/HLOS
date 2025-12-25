@@ -53,7 +53,7 @@ string_t read(uint_t len, bool_t ctrl_chars, string_t start) {
     byte_t startrow = VGA.row;
     uint_t blinktime = time() + 500;
     bool_t blinking = false;
-    bool_t insert = true;
+    static bool_t insert = true;
     if (start != NULL) {
         uint_t startlen = strlen(start);
         assert(startlen < min(len, MAX_INPUT_LEN), "read() - start length > len!");
@@ -266,7 +266,7 @@ string_t read(uint_t len, bool_t ctrl_chars, string_t start) {
                         targetrow = VGA.row + 1;
                         col = startcol;
                         row = startrow;
-                        count = end - buffer;
+                        count = end - buffer + 1;
                         index = count;
                         for (uint_t i = 0; i < count; ++i) {
                             if (row == targetrow) {
@@ -297,7 +297,7 @@ string_t read(uint_t len, bool_t ctrl_chars, string_t start) {
                                     break;
                             }
                         }
-                        current = buffer + index;
+                        current = buffer + min((int_t) index, (int_t) (end - buffer));
                         break;
                     case SCANCODE_PAGEUP:
                     case SCANCODE_HOME:

@@ -71,10 +71,10 @@ echo -----------------------------------------------------------------
 echo.
 
 :: Create binary blob for virtual hard drive space
-qemu-img create -f raw "%BUILD%\raw.bin" 512000000 # 512 MB
+if not exist "%BUILD%\hlos.img" qemu-img create -f raw "%BUILD%\raw.bin" 512000000 # 512 MB
 
 :: Append kernel.bin into boot.bin
-type "%BUILD%\boot.bin" "%BUILD%\kernel.bin" "%BUILD%\raw.bin" > "%BUILD%\hlos.img"
+if not exist "%BUILD%\hlos.img" type "%BUILD%\boot.bin" "%BUILD%\kernel.bin" "%BUILD%\raw.bin" > "%BUILD%\hlos.img"
 
 :: Boot hlos.img in QEMU
 "%PROGRAMFILES%\qemu\qemu-system-i386.exe"^
@@ -82,5 +82,4 @@ type "%BUILD%\boot.bin" "%BUILD%\kernel.bin" "%BUILD%\raw.bin" > "%BUILD%\hlos.i
     -drive file="%BUILD%\hlos.img",format=raw^
     -audiodev sdl,id=snd0^
     -device sb16,audiodev=snd0^
-    -machine pcspk-audiodev=snd0^
-    -rtc base="1970-01-01T00:00:00"
+    -machine pcspk-audiodev=snd0

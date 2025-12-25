@@ -73,6 +73,12 @@ static void FAT32_init() {
             ),
             "FAT32_init() - Formatting failed!"
         );
+        mount(ATA_PRIMARY_PORT, ATA_MASTER_DRIVE, FAT32_START);
+        string_t welcome = "Welcome to HLOS!\n";
+        assert(
+            fileappend("hlos.txt", strlen(welcome), welcome),
+            "FAT32_init() - Could not create test file!"
+        );
         print(" Formatting successful!\n\n");
         color(VGA_COLOR_YELLOW, VGA_COLOR_BLACK);
         print("Rebooting . . .");

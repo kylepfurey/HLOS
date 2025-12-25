@@ -5,7 +5,7 @@
 #ifndef HLOS_FILE_H
 #define HLOS_FILE_H
 
-#include "lib.h"
+#include "types.h"
 
 /** The size in bytes of a sector. */
 #define SECTOR_SIZE 512
@@ -59,7 +59,7 @@
 #define FAT32_START 100
 
 /** The size in sectors of FAT32. */
-#define FAT32_SIZE 1048576
+#define FAT32_SIZE 1000000
 
 /** Advanced Technology Attachment ports. */
 typedef enum ATA_port {
@@ -254,7 +254,7 @@ uint_t filelist(string_t path, uint_t size, char_t *list);
 bool_t mount(ATA_port_t port, byte_t drive, uint_t start);
 
 /** Formats the hard drive for FAT32. */
-bool_t format(ATA_port_t port, byte_t drive, uint_t start, uint_t clus_count, uint_t part_size, bool_t force);
+bool_t format(ATA_port_t port, byte_t drive, uint_t start, uint_t clus_count, uint_t sec_count, bool_t force);
 
 /**
  * Allocates new clusters for the mounted FAT32 instance at <path>. <clus> is set to the cluster of the created directory.

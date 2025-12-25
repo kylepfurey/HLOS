@@ -89,7 +89,6 @@ bool_t fileappend(string_t path, uint_t size, string_t data) {
         data = NULL;
     }
     char_t *file = NULL;
-    FAT32_cluster_t new_clus;
     if (fsize + size > 0) {
         file = (char_t *) malloc(fsize + size);
         if (file == NULL) {
@@ -103,7 +102,7 @@ bool_t fileappend(string_t path, uint_t size, string_t data) {
     FAT32_free(path);
     FAT32_directory_t new_dir = FAT32_alloc(path, fsize + size, file, attr, false, NULL);
     if (DIRECTORY_END(new_dir)) {
-        FAT32_alloc(path, fsize, file, attr, true, NULL); // Restore the deleted file
+        FAT32_alloc(path, fsize, file, attr, false, NULL); // Restore the deleted file
         return false;
     }
     free(file);
@@ -117,6 +116,9 @@ bool_t fileappend(string_t path, uint_t size, string_t data) {
 bool_t filemove(string_t dest, string_t src) {
     assert(dest != NULL, "filemove() - end was NULL!");
     assert(src != NULL, "filemove() - start was NULL!");
+    if (strcompare(dest, src) == EQUAL_TO) {
+        return true;
+    }
     uint_t size;
     if (!filesize(src, &size)) {
         return false;
@@ -177,7 +179,7 @@ uint_t filelist(string_t path, uint_t size, char_t *list) {
     FAT32_directory_t *iter = start;
     uint_t count = 0;
     for (iter += 2; !DIRECTORY_END(*iter) && size > 0; ++iter) {
-        if (iter->name[0] == FAT32_DIRECTORY_SKIP) {
+        if (iter->name[0] == (char_t) FAT32_DIRECTORY_SKIP) {
             continue;
         }
         if (list != NULL) {
@@ -194,7 +196,7 @@ uint_t filelist(string_t path, uint_t size, char_t *list) {
                 list[name_len] = '\0';
             }
             list[FILE_NAME_LEN] = '\0';
-            list += FILE_NAME_LEN + 1;
+            list += FILE_NAME_LEN;
         }
         --size;
         ++count;
@@ -255,12 +257,12 @@ bool_t mount(ATA_port_t port, byte_t drive, uint_t start) {
 }
 
 /** Formats the hard drive for FAT32. */
-bool_t format(ATA_port_t port, byte_t drive, uint_t start, uint_t clus_count, uint_t part_size, bool_t force) {
+bool_t format(ATA_port_t port, byte_t drive, uint_t start, uint_t clus_count, uint_t sec_count, bool_t force) {
     assert(port == ATA_PRIMARY_PORT || port == ATA_SECONDARY_PORT, "format() - port was invalid!");
     assert(drive == ATA_MASTER_DRIVE || drive == ATA_SLAVE_DRIVE, "format() - drive was invalid!");
     assert(clus_count <= 128, "format() - clus_count is too large for FAT32!");
     assert(clus_count > 0 && (clus_count & (clus_count - 1)) == 0, "format() - clus_count is not a power of 2!");
-    assert(part_size >= SECTOR_SIZE, "format() - part_size is too small for FAT32!");
+    assert(sec_count >= 66595, "format() - sec_count is too small for FAT32! Minimum for 1 cluster is 66595!");
     // Boot sector
     FAT32_boot_t boot = {0};
     FAT32_FS_t FS = {0};
@@ -314,7 +316,7 @@ bool_t format(ATA_port_t port, byte_t drive, uint_t start, uint_t clus_count, ui
     boot.track_size = 63;
     boot.head_count = 255;
     boot.hidden_count = start;
-    boot.sector_count32 = part_size;
+    boot.sector_count32 = sec_count;
     boot.flags = 0;
     boot.FS_version = 0;
     boot.root = 2;
@@ -349,7 +351,7 @@ bool_t format(ATA_port_t port, byte_t drive, uint_t start, uint_t clus_count, ui
         clusters = sectors / boot.cluster_size;
         FAT_size = (clusters * 4 + (boot.sector_size - 1)) / boot.sector_size;
     } while (FAT_size != previous_size);
-    assert(clusters >= 65525, "format() - Cluster count must be >= 65525!");
+    assert(clusters >= 65525, "format() - Total clusters must be >= 65525!");
     boot.FAT_size32 = FAT_size;
     secwrite(port, drive, start, 1, (char_t *) &boot); // Boot sector
     secwrite(port, drive, start + boot.backup, 1, (char_t *) &boot); // Backup sector
@@ -429,7 +431,7 @@ FAT32_directory_t FAT32_alloc(
     assert(FAT32.mounted, "FAT32_alloc() - FAT32 was not mounted!");
     assert(DIRECTORY_END(FAT32_find(path, NULL)), "FAT32_alloc() - Cannot reallocate an existing file!");
     // Locate parent directory
-    char_t parent_path[MAX_STRING_LEN];
+    char_t parent_path[MAX_STRING_LEN] = {0};
     strcopy(parent_path, path);
     FAT32_cluster_t parent_clus;
     FAT32_directory_t parent_dir;
@@ -475,7 +477,7 @@ FAT32_directory_t FAT32_alloc(
             clus_iter = FAT32.table[clus_iter];
             array_iter += clus_size;
         }
-        if (DIRECTORY_END(*dir_iter) || dir_iter->name[0] == FAT32_DIRECTORY_SKIP) {
+        if (DIRECTORY_END(*dir_iter) || dir_iter->name[0] == (char_t) FAT32_DIRECTORY_SKIP) {
             break;
         }
         ++dir_count;
@@ -566,9 +568,9 @@ FAT32_directory_t FAT32_alloc(
             uint_t chunk = min((int_t) clus_size, (int_t) size);
             if (data != NULL) {
                 copy(mem, data, chunk);
+                data += chunk;
             }
             secwrite(FAT32.port, FAT32.drive, CLUSTER_TO_SECTOR(i), FAT32.boot.cluster_size, mem);
-            data += chunk;
             size -= chunk;
         }
         free(mem);
@@ -685,7 +687,7 @@ FAT32_directory_t FAT32_find(string_t path, FAT32_cluster_t *clus) {
     FAT32_cluster_t clus_iter = FAT32.boot.root;
     FAT32_directory_t *dir_iter = NULL;
     FAT32_cluster_t prev_clus = FAT32.boot.root;
-    char_t buffer[MAX_STRING_LEN];
+    char_t buffer[MAX_STRING_LEN] = {0};
     strcopy(buffer, path);
     char_t *path_iter = buffer;
     strlower(path_iter);
@@ -705,10 +707,10 @@ FAT32_directory_t FAT32_find(string_t path, FAT32_cluster_t *clus) {
             break;
         }
         for (; !DIRECTORY_END(*dir_iter); ++dir_iter) {
-            if (dir_iter->name[0] == FAT32_DIRECTORY_SKIP) {
+            if (dir_iter->name[0] == (char_t) FAT32_DIRECTORY_SKIP) {
                 continue;
             }
-            char_t name[FILE_NAME_LEN];
+            char_t name[FILE_NAME_LEN] = {0};
             uint_t name_len = strfirst(dir_iter->name, ' ');
             name_len = min((int_t) name_len, ARRAY_SIZE(dir_iter->name));
             uint_t ext_len = strfirst(dir_iter->extension, ' ');
@@ -768,10 +770,10 @@ bool_t FAT32_free(string_t path) {
         }
         FAT32_directory_t *iter = data_dir;
         for (iter += 2; !DIRECTORY_END(*iter); ++iter) {
-            if (iter->name[0] == FAT32_DIRECTORY_SKIP) {
+            if (iter->name[0] == (char_t) FAT32_DIRECTORY_SKIP) {
                 continue;
             }
-            char_t buffer[MAX_STRING_LEN];
+            char_t buffer[MAX_STRING_LEN] = {0};
             strcopy(buffer, path);
             strpush(buffer, '/');
             uint_t len = strlen(buffer);
@@ -798,12 +800,12 @@ bool_t FAT32_free(string_t path) {
     FAT32_directory_t *array = (FAT32_directory_t *) FAT32_load(freed_clus, 1);
     FAT32_directory_t *iter = array;
     while (!DIRECTORY_END(*iter)) {
-        if (iter->name[0] == FAT32_DIRECTORY_SKIP) {
+        if (iter->name[0] == (char_t) FAT32_DIRECTORY_SKIP) {
             ++iter;
             continue;
         }
         if (DIRECTORY_CLUSTER(freed_dir) == DIRECTORY_CLUSTER(*iter)) {
-            iter->name[0] = FAT32_DIRECTORY_SKIP;
+            iter->name[0] = (char_t) FAT32_DIRECTORY_SKIP;
             secwrite(
                 FAT32.port,
                 FAT32.drive,
@@ -886,8 +888,8 @@ char_t *secread(ATA_port_t port, byte_t drive, uint_t sec, byte_t num, char_t *s
         for (uint_t word = 0; word < (SECTOR_SIZE / 2); ++word) {
             uint_t index = (sector * SECTOR_SIZE) + (word * 2);
             ushort_t data = in2(data_port);
-            str[index] = data & 255;
-            str[index + 1] = data >> 8;
+            str[index] = (char_t) (data & 255);
+            str[index + 1] = (char_t) (data >> 8);
         }
     }
     do {

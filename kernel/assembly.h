@@ -7,6 +7,9 @@
 
 #include "types.h"
 
+/** The x86 return instruction. */
+#define RET 0xC3
+
 /** Pauses the CPU. */
 extern void hlt();
 

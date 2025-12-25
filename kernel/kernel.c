@@ -38,9 +38,9 @@ void kernel_main() {
     sleep(1000);
     opening();
     clock(NULL);
-    char_t text[VGA_SIZE];
+    char_t text[VGA_SIZE] = {0};
     strcopy(text, "int main() {\n\treturn 0;\n}\n");
-    char_t dir[VGA_WIDTH - 2];
+    char_t dir[VGA_WIDTH - 2] = {0};
     uint_t i;
     while (true) {
         switch (selection()) {
@@ -51,15 +51,17 @@ void kernel_main() {
                 i = strlast(dir, '.');
                 if (i != NOT_FOUND) {
                     if (strcompare(strlower(dir + i + 1), "txt") == EQUAL_TO) {
-                        if (fileread(dir, 0, ALL_BYTES, text)) {
-                            strcopy(text, textedit(text));
+                        uint_t size;
+                        if (filesize(dir, &size) && fileread(dir, 0, ALL_BYTES, text)) {
+                            text[size] = '\0';
+                            copy(text, textedit(text), size);
                         } else {
                             color(VGA_COLOR_RED, VGA_COLOR_BLACK);
                             print("\n\nFile not found!");
                             sleep(1000);
                         }
                     } else if (strcompare(dir + i + 1, "exe") == EQUAL_TO) {
-                        if (fileread(dir, 0, i, text)) {
+                        if (fileread(dir, 0, ALL_BYTES, text)) {
                             call(text);
                         } else {
                             color(VGA_COLOR_RED, VGA_COLOR_BLACK);
@@ -80,7 +82,7 @@ void kernel_main() {
             case SELECTION_FILES_SAVE:
                 strcopy(dir, directory("filename", "SAVE"));
                 if (strlen(dir) > 0) {
-                    filewrite(dir, strlen(text) + 1, text);
+                    filewrite(dir, strlen(text), text);
                 } else {
                     color(VGA_COLOR_RED, VGA_COLOR_BLACK);
                     print("\n\nInvalid file name!");
@@ -315,8 +317,8 @@ string_t directory(string_t prompt, string_t operation) {
     color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
     print(datestr(date(), false));
     color(VGA_COLOR_BROWN, VGA_COLOR_BLACK);
-    char_t list[5][VGA_SIZE - 2];
-    uint_t size = filelist("/", 5, (char_t **) list);
+    char_t list[FILE_NAME_LEN * 5] = {0};
+    uint_t size = filelist("", 5, list);
     print("\n\nHLOS/FILES/");
     print(operation);
     print("\n\n");
@@ -324,7 +326,7 @@ string_t directory(string_t prompt, string_t operation) {
     for (uint_t i = 0; i < 5; ++i) {
         print("- ");
         if (i < size) {
-            print(list[i]);
+            print(list + (FILE_NAME_LEN * i));
         }
         printchar('\n');
     }

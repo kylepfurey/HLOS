@@ -60,7 +60,7 @@ void step(string_t msg) {
     byte_t col = VGA.column;
     byte_t row = VGA.row;
     byte_t old_color = VGA.color;
-    VGA_char_t array[VGA_SIZE];
+    VGA_char_t array[VGA_SIZE] = {0};
     for (uint_t i = 0; i < VGA_SIZE; ++i) {
         array[i] = VGA.array[i];
     }
@@ -95,7 +95,7 @@ void step(string_t msg) {
 string_t dump(uint_t size, void *addr) {
     assert(addr != NULL, "dump() - addr was NULL!");
     size = min((int_t) size, VGA_SIZE);
-    static char_t buffer[VGA_SIZE];
+    static char_t buffer[VGA_SIZE] = {0};
     if (size <= sizeof(int_t)) {
         int_t *num = (int_t *) addr;
         strcopy(buffer, intstr(*num));

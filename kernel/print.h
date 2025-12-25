@@ -5,7 +5,7 @@
 #ifndef HLOS_PRINT_H
 #define HLOS_PRINT_H
 
-#include "string.h"
+#include "types.h"
 
 /** Combines a foreground and background color for the Video Graphics Array. */
 #define VGA_COLOR(fg, bg) (((bg) << 4) | ((fg) & 15))

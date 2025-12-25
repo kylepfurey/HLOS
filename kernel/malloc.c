@@ -25,7 +25,9 @@ block_t *free_block = NULL;
  * The allocated memory will always be at least the size of <size>.
  */
 void *malloc(uint_t size) {
-    assert(size != 0, "malloc() - size was 0!");
+    if (size == 0) {
+        return NULL;
+    }
     size = (size + (MALLOC_ALIGN - 1)) & ~(MALLOC_ALIGN - 1); // Round up to 4-byte alignment
     while (true) {
         block_t *prev = NULL;
