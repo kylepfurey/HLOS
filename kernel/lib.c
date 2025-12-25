@@ -129,6 +129,37 @@ int_t abs(int_t num) {
     return -num;
 }
 
+/** Rounds a number. */
+int_t round(float_t num) {
+    if (num >= 0) {
+        return (int_t) (num + 0.5);
+    }
+    return (int_t) (num - 0.5);
+}
+
+/** Rounds a number up. */
+int_t ceil(float_t num) {
+    int_t val = (int_t) num;
+    if (num != (float_t) val) {
+        return val + 1;
+    }
+    return val;
+}
+
+/** Rounds a number down. */
+int_t floor(float_t num) {
+    int_t val = (int_t) num;
+    if (num != (float_t) val) {
+        return val - 1;
+    }
+    return val;
+}
+
+/** Rounds a number to the next alignment boundary. */
+uint_t align(uint_t num, uint_t align) {
+    return ((num + align - 1) / align) * align;
+}
+
 /** Generates a unique hash code from the given data. */
 uint_t hash(const void *data, uint_t size) {
     assert(data != NULL, "hash() - data was NULL!");
