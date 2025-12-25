@@ -7,8 +7,11 @@
 /** The global Page Directory. */
 volatile page_directory_t *page_directory = (volatile page_directory_t *) &__page_directory_start;
 
-/** The start of the global Page Tables. */
+/** The start of all allocated Page Tables. */
 volatile page_table_t *page_tables = (volatile page_table_t *) &__page_tables_start;
+
+/** The next free Page Table. */
+page_t *free_table = NULL;
 
 /** The next free memory page. */
 page_t *free_page = NULL;
@@ -26,14 +29,14 @@ void *malloc(uint_t size) {
     size = (size + (MALLOC_ALIGN - 1)) & ~(MALLOC_ALIGN - 1); // Round up to 4-byte alignment
     while (true) {
         block_t *prev = NULL;
-        block_t *curr = free_block;
-        while (curr != NULL) {
-            if (curr->size >= size) {
-                if (curr->size >= size + sizeof(block_t) + MALLOC_ALIGN) {
-                    block_t *new_block = (block_t *) ((byte_t *) curr + sizeof(block_t) + size);
-                    new_block->size = curr->size - size - sizeof(block_t);
-                    new_block->next = curr->next;
-                    curr->size = size;
+        block_t *current = free_block;
+        while (current != NULL) {
+            if (current->size >= size) {
+                if (current->size >= size + sizeof(block_t) + MALLOC_ALIGN) {
+                    block_t *new_block = (block_t *) ((byte_t *) current + sizeof(block_t) + size);
+                    new_block->size = current->size - size - sizeof(block_t);
+                    new_block->next = current->next;
+                    current->size = size;
                     if (prev) {
                         prev->next = new_block;
                     } else {
@@ -41,17 +44,17 @@ void *malloc(uint_t size) {
                     }
                 } else {
                     if (prev != NULL) {
-                        prev->next = curr->next;
+                        prev->next = current->next;
                     } else {
-                        free_block = curr->next;
+                        free_block = current->next;
                     }
                 }
-                return ((byte_t *) curr) + sizeof(block_t);
+                return ((byte_t *) current) + sizeof(block_t);
             }
-            prev = curr;
-            curr = curr->next;
+            prev = current;
+            current = current->next;
         }
-        page_t *page = pagealloc();
+        page_t *page = pagealloc(false);
         if (page == NULL) {
             return NULL;
         }
@@ -125,28 +128,31 @@ void free(void *mem) {
 
 /** Maps the given physical memory address to the given virtual memory address with the given flags. */
 void map(void *phys, void *virt, PDE_flags_t dir_flags, PTE_flags_t table_flags) {
-    assert(phys != NULL, "map() - phys was NULL!");
-    assert(virt != NULL, "map() - virt was NULL!");
+    // Note: phys and virt can be 0
     assert(((uint_t) phys & (PAGE_SIZE - 1)) == 0, "map() - phys was not aligned to PAGE_SIZE!");
     assert(((uint_t) virt & (PAGE_SIZE - 1)) == 0, "map() - virt was not aligned to PAGE_SIZE!");
     uint_t directory_index = PAGE_DIRECTORY_INDEX(virt);
     uint_t table_index = PAGE_TABLE_INDEX(virt);
     page_table_t *table;
     if ((page_directory->entries[directory_index] & PDE_FLAGS_PRESENT) == 0) {
-        table = (page_table_t *) pagealloc();
+        table = (page_table_t *) pagealloc(true);
         assert(table != NULL, "map() - Could not allocate a memory page!");
         set(table, 0, PAGE_SIZE);
         page_directory->entries[directory_index] = NEW_PAGE_ENTRY(table, dir_flags);
     } else {
         table = (page_table_t *) PAGE_ENTRY_ADDRESS(page_directory->entries[directory_index]);
     }
+    assert(
+        (table->entries[table_index] & PTE_FLAGS_PRESENT) == 0,
+        "map() - Attempting to overwrite an existing page!"
+    );
     table->entries[table_index] = NEW_PAGE_ENTRY(phys, table_flags);
     invlpg(virt);
 }
 
 /** Unmaps the given virtual memory address. */
 void unmap(void *virt) {
-    assert(virt != NULL, "unmap() - virt was NULL!");
+    // Note: virt can be 0
     uint_t directory_index = PAGE_DIRECTORY_INDEX(virt);
     uint_t table_index = PAGE_TABLE_INDEX(virt);
     assert(
@@ -172,13 +178,22 @@ void unmap(void *virt) {
     page_directory->entries[directory_index] = 0;
 }
 
-/** Allocates a new page of memory. */
-page_t *pagealloc() {
-    if (free_page == NULL) {
-        return NULL;
+/** Allocates a new page of memory for either a Page Table or for the heap. */
+page_t *pagealloc(bool_t table) {
+    page_t *page;
+    if (table) {
+        if (free_table == NULL) {
+            return NULL;
+        }
+        page = free_table;
+        free_table = page->next;
+    } else {
+        if (free_page == NULL) {
+            return NULL;
+        }
+        page = free_page;
+        free_page = page->next;
     }
-    page_t *page = free_page;
-    free_page = page->next;
     set(page, 0, PAGE_SIZE);
     return page;
 }

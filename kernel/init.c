@@ -23,18 +23,18 @@ static void keyboard_init() {
 static void heap_init() {
     // Clear page directory
     set(&__page_directory_start, 0, &__page_directory_end - &__page_directory_start);
-    // Initialize all free memory pages
-    free_page = (page_t *) &__page_tables_start;
-    page_t *current = free_page;
+    // Initialize free page tables
+    free_table = (page_t *) &__page_tables_start;
+    page_t *current = free_table;
     page_t *next = (page_t *) (((byte_t *) current) + PAGE_SIZE);
-    while (next <= (page_t *) &__kernel_heap_end) {
+    while (next < (page_t *) &__page_tables_end) {
         current->next = next;
         current = next;
         next = (page_t *) (((byte_t *) current) + PAGE_SIZE);
     }
     current->next = NULL;
     // Map all kernel virtual addresses
-    for (byte_t *page = (byte_t *) PAGE_SIZE; page < &__page_tables_end; page += PAGE_SIZE) {
+    for (byte_t *page = (byte_t *) 0; page < &__kernel_heap_end; page += PAGE_SIZE) {
         map(
             page,
             page,
@@ -42,11 +42,11 @@ static void heap_init() {
             PTE_FLAGS_PRESENT | PTE_FLAGS_WRITABLE
         );
     }
-    // Initialize heap allocator
-    free_page = (page_t *) &__kernel_heap_start;
+    // Initialize heap pages and allocator
     free_block = (block_t *) &__kernel_heap_start;
     free_block->size = (uint_t) (&__kernel_heap_end - &__kernel_heap_start - sizeof(block_t));
     free_block->next = NULL;
+    free_page = NULL; // TODO: Initialize user heap
     // Enable paging
     IDT_bind(PAGE_FAULT, page_fault_interrupt, IDT_KERNEL_SELECTOR, IDT_KERNEL_FLAGS);
     enable_paging();

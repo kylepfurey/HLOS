@@ -72,13 +72,13 @@ typedef uint_t page_entry_t;
 
 /** An array of each Page Directory Entry used to locate virtual memory pages in the Page Table.  */
 typedef struct page_directory {
-    /** Each page entry in the page directory. */
+    /** Each page entry in the Page Directory. */
     page_entry_t entries[PDE_SIZE];
 } page_directory_t;
 
 /** An array of each Page Table Entry used to physical memory pages. */
 typedef struct page_table {
-    /** Each page entry in the page table. */
+    /** Each page entry in the Page Table. */
     page_entry_t entries[PTE_SIZE];
 } page_table_t;
 
@@ -100,8 +100,11 @@ typedef struct block {
 /** The global Page Directory. */
 extern volatile page_directory_t *page_directory;
 
-/** The start of the global Page Tables. */
+/** The start of all allocated Page Tables. */
 extern volatile page_table_t *page_tables;
+
+/** The next free Page Table. */
+extern page_t *free_table;
 
 /** The next free memory page. */
 extern page_t *free_page;
@@ -131,8 +134,8 @@ void map(void *phys, void *virt, PDE_flags_t dir_flags, PTE_flags_t table_flags)
 /** Unmaps the given virtual memory address. */
 void unmap(void *virt);
 
-/** Allocates a new page of memory. */
-page_t *pagealloc();
+/** Allocates a new page of memory for either a Page Table or for the heap. */
+page_t *pagealloc(bool_t table);
 
 /** Deallocates a page of memory. */
 void pagefree(page_t *page);
