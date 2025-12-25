@@ -108,7 +108,7 @@ void *realloc(void *mem, uint_t size) {
     if (alloc == NULL) {
         return NULL;
     }
-    copy(alloc, mem, min((int_t) old_size, block->size));
+    copy(alloc, mem, min((int_t) old_size, (int_t) size));
     free(mem);
     return alloc;
 }
