@@ -123,25 +123,6 @@ void free(void *mem) {
     free_block = block;
 }
 
-/** Allocates a new page of memory. */
-page_t *pagealloc() {
-    if (free_page == NULL) {
-        return NULL;
-    }
-    page_t *page = free_page;
-    free_page = page->next;
-    set(page, 0, PAGE_SIZE);
-    return page;
-}
-
-/** Deallocates a page of memory. */
-void pagefree(page_t *page) {
-    assert(page != NULL, "pagefree() - page was NULL!");
-    assert(((uint_t) page & (PAGE_SIZE - 1)) == 0, "pagefree() - page was not aligned to PAGE_SIZE!");
-    page->next = free_page;
-    free_page = page;
-}
-
 /** Maps the given physical memory address to the given virtual memory address with the given flags. */
 void map(void *phys, void *virt, PDE_flags_t dir_flags, PTE_flags_t table_flags) {
     assert(phys != NULL, "map() - phys was NULL!");
@@ -189,6 +170,25 @@ void unmap(void *virt) {
     }
     pagefree((page_t *) PAGE_ENTRY_ADDRESS(page_directory->entries[directory_index]));
     page_directory->entries[directory_index] = 0;
+}
+
+/** Allocates a new page of memory. */
+page_t *pagealloc() {
+    if (free_page == NULL) {
+        return NULL;
+    }
+    page_t *page = free_page;
+    free_page = page->next;
+    set(page, 0, PAGE_SIZE);
+    return page;
+}
+
+/** Deallocates a page of memory. */
+void pagefree(page_t *page) {
+    assert(page != NULL, "pagefree() - page was NULL!");
+    assert(((uint_t) page & (PAGE_SIZE - 1)) == 0, "pagefree() - page was not aligned to PAGE_SIZE!");
+    page->next = free_page;
+    free_page = page;
 }
 
 /** Asserts on a page fault. */
