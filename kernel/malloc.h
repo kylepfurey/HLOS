@@ -125,17 +125,17 @@ void *realloc(void *mem, uint_t size);
 /** Releases the given memory from the heap. */
 void free(void *mem);
 
-/** Allocates a new page of memory. */
-page_t *pagealloc();
-
-/** Deallocates a page of memory. */
-void pagefree(page_t *page);
-
 /** Maps the given physical memory address to the given virtual memory address with the given flags. */
 void map(void *phys, void *virt, PDE_flags_t dir_flags, PTE_flags_t table_flags);
 
 /** Unmaps the given virtual memory address. */
 void unmap(void *virt);
+
+/** Allocates a new page of memory. */
+page_t *pagealloc();
+
+/** Deallocates a page of memory. */
+void pagefree(page_t *page);
 
 /** Asserts on a page fault. */
 void crash(uint_t err);
