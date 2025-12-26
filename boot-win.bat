@@ -33,6 +33,7 @@ set ASSEMBLE="%APPDATA%\..\Local\bin\NASM\nasm.exe" -f elf32
 %COMPILE%  "kernel\malloc.c" -o "%INTERMEDIATE%\malloc.o"
 %COMPILE%  "kernel\event.c" -o "%INTERMEDIATE%\event.o"
 %COMPILE%  "kernel\beep.c" -o "%INTERMEDIATE%\beep.o"
+%COMPILE%  "kernel\render.c" -o "%INTERMEDIATE%\render.o"
 
 :: Link compiled kernel with linker.ld
 "%PROGRAMFILES%\i686-elf-tools-windows\bin\i686-elf-ld.exe" -T "boot\linker.ld" -o "%BUILD%\kernel.bin"^
@@ -49,7 +50,8 @@ set ASSEMBLE="%APPDATA%\..\Local\bin\NASM\nasm.exe" -f elf32
 	"%INTERMEDIATE%\file.o"^
 	"%INTERMEDIATE%\malloc.o"^
 	"%INTERMEDIATE%\event.o"^
-	"%INTERMEDIATE%\beep.o"
+	"%INTERMEDIATE%\beep.o"^
+	"%INTERMEDIATE%\render.o"
 
 :: Log the size of boot and kernel binaries
 echo.

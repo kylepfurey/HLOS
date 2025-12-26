@@ -33,7 +33,7 @@ init_stack16:
 ; Loads the kernel from disk
 load_kernel:
 	mov ah, 0x2						; Set BIOS read sectors function
-	mov al, 89						; Set number of sectors (kernel size / 512 rounded up)
+	mov al, 128						; Set number of sectors (kernel size / 512 rounded up)
 	mov ch, 0x0						; Set cylinder 0
 	mov cl, 0x2						; Set sector after bootloader
 	mov dh, 0x0						; Set head 0
@@ -84,7 +84,7 @@ enable_a20:
 	in al, 0x92						; Read from control port A
 	or al, 0x2						; Enable A20 gate
 	out 0x92, al					; Write to control port A
-	jmp protected_mode				; Enter 32-bit protected mode
+	jmp init_VGA					; Initialize the Video Graphics Array
 
 
 ; Disk error message string
@@ -96,6 +96,14 @@ msg_error:
 pause:
 	hlt								; Halt CPU
 	jmp pause						; Infinitely loop
+
+
+; Initializes the Video Graphics Array
+init_VGA:
+	mov ax, 0x3						; Store text mode command in data segment
+	;mov ax, 0x13					; Store pixel mode command in data segment
+	int 0x10						; Set VGA mode with a BIOS interrupt
+	jmp protected_mode				; Enter 32-bit protected mode
 
 
 ; Enters 32-bit protected mode
@@ -238,7 +246,7 @@ db 0x0								; Boot flag
 db 0xFF, 0xFF, 0xFF					; CHS start
 db 0xC								; FAT32 partition
 db 0xFF, 0xFF, 0xFF					; CHS end
-dd 100								; Partition location (80th sector)
+dd 200								; Partition location (200th sector)
 dd 1000000							; Partition size (512 megabytes)
 times 16*3 db 0x0					; Pad boot sector to 512 bytes
 dw 0xAA55							; Boot signature

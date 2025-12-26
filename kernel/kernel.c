@@ -24,7 +24,7 @@ void opening();
 selection_t selection();
 
 /** Coroutine for the clock. */
-void clock(void *);
+void clock(void *args);
 
 /** Text-editing sequence. */
 string_t textedit(string_t text);
@@ -32,9 +32,13 @@ string_t textedit(string_t text);
 /** Requests a directory from the user. */
 string_t directory(string_t prompt, string_t operation);
 
+/** Tests pixel rendering with noise. */
+void noisetest();
+
 /** The entry point of the HLOS kernel. */
 void kernel_main() {
     init();
+    noisetest(); // Noop when disabled
     sleep(1000);
     opening();
     clock(NULL);
@@ -275,7 +279,7 @@ restart:
 }
 
 /** Coroutine for the clock. */
-void clock(void *) {
+void clock(void *args) {
     coro(1000, clock, NULL);
     byte_t col = VGA.column;
     byte_t row = VGA.row;
@@ -304,7 +308,6 @@ string_t textedit(string_t text) {
         VGA.column = 0;
         VGA.row = row;
         text = (char_t *) read(VGA_SIZE, true, text);
-        key_state_t key;
         if ((keyboard.queue[keyboard.index].flags & KEY_FLAGS_CTRL) != 0) {
             return text;
         }
@@ -336,4 +339,36 @@ string_t directory(string_t prompt, string_t operation) {
     print(".\n\n> ");
     color(VGA_COLOR_YELLOW, VGA_COLOR_BLACK);
     return read(VGA_WIDTH - 2, false, "/");
+}
+
+/** Tests pixel rendering with noise. */
+void noisetest() {
+#if PIXEL_RENDERING
+    uint_t size = (PBA_HEIGHT / 3);
+    for (uint_t i = 0, j = 4; rng() != 0; ++i) {
+        i %= size;
+        if (i == 0) {
+            ++j;
+            j %= 5;
+        }
+        for (uint_t i = 0; i < PBA_SIZE; ++i) {
+            PBA.next[i] = (j == 4 ? rng() : rngrange(0, ticks)) % 256;
+        }
+        if (j != 4) {
+            byte_t color = i * (255 / size);
+            square(
+                POINT(
+                    (PBA_WIDTH / 2) - i,
+                    (PBA_HEIGHT / 2) - i
+                ),
+                POINT(
+                    (PBA_WIDTH / 2) + i,
+                    (PBA_HEIGHT / 2) + i
+                ),
+                j != 3 ? COLOR(j == 0 ? color : 0, j == 1 ? color : 0, j == 2 ? color : 0) : COLOR(color, color, color)
+            );
+        }
+        render();
+    }
+#endif
 }

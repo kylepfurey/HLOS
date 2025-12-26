@@ -46,6 +46,8 @@ SECTIONS {
 	/** RAM DATA STRUCTURES */
 	__IDT_start = 				0x80000;			/** Interrupt Descriptor Table */
 	__IDT_end = 				0x89000;
+	__PBA_start = 				0xA0000;			/** Pixel Buffer Array */
+	__PBA_end = 				0xB09FF;
 	__VGA_start = 				0xB8000;			/** Video Graphics Array */
 	__VGA_end = 				0xB9000;
 

@@ -160,6 +160,17 @@ uint_t align(uint_t num, uint_t align) {
     return ((num + align - 1) / align) * align;
 }
 
+/** Clamps <num> between <min> and <max>. */
+int_t clamp(int_t num, int_t min, int_t max) {
+    if (num <= min) {
+        return min;
+    }
+    if (num >= max) {
+        return max;
+    }
+    return num;
+}
+
 /** Generates a unique hash code from the given data. */
 uint_t hash(const void *data, uint_t size) {
     assert(data != NULL, "hash() - data was NULL!");

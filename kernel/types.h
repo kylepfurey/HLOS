@@ -37,4 +37,4 @@ typedef char char_t;
 /** A null-terminated immutable sequence of characters. */
 typedef const char_t *string_t;
 
-#endif // HLOS_TYPES_T
+#endif // HLOS_TYPES_H

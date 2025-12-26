@@ -4,6 +4,23 @@
 
 #include "hlos.h"
 
+/** Initializes the Pixel Buffer Array color palette. */
+static void PBA_init() {
+#if PIXEL_RENDERING
+    for (uint_t i = 0; i < 256; ++i) {
+        byte_t red = ((i >> 5) & 0x7) * 8;
+        byte_t green = ((i >> 2) & 0x7) * 8;
+        byte_t blue = ((i & 3) << 1) * 8;
+        out(PBA_INDEX_PORT, (byte_t) i);
+        out(PBA_COLOR_PORT, red);
+        out(PBA_COLOR_PORT, green);
+        out(PBA_COLOR_PORT, blue);
+    }
+    fill(COLOR(51, 77, 77));
+    render();
+#endif
+}
+
 /** Initializes the Programmable Interval Timer. */
 static void PIT_init() {
     out(PIT_CMD_PORT, PIT_CMD_NUM);
@@ -90,6 +107,7 @@ static void FAT32_init() {
 /** Initializes the kernel. */
 void init() {
     set(&__bss_start, 0, &__bss_end - &__bss_start);
+    PBA_init();
     PIT_init();
     keyboard_init();
     heap_init();

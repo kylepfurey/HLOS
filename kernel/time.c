@@ -12,9 +12,8 @@ uint_t speed = 1;
 
 /** Returns the total number of milliseconds since the kernel booted. */
 uint_t time() {
-    uint_t ms;
     cli();
-    ms = ticks;
+    uint_t ms = ticks;
     sti();
     return ms * PIT_TICK_MS;
 }

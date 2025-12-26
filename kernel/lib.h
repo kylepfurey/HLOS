@@ -61,6 +61,9 @@ int_t floor(float_t num);
 /** Rounds a number to the next alignment boundary. */
 uint_t align(uint_t num, uint_t align);
 
+/** Clamps <num> between <min> and <max>. */
+int_t clamp(int_t num, int_t min, int_t max);
+
 /** Generates a unique hash code from the given data. */
 uint_t hash(const void *data, uint_t size);
 

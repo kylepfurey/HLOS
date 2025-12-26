@@ -56,7 +56,7 @@
 #define FILE_NAME_LEN 13
 
 /** The sector FAT32 resides on disk. */
-#define FAT32_START 100
+#define FAT32_START 200
 
 /** The size in sectors of FAT32. */
 #define FAT32_SIZE 1000000

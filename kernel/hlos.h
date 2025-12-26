@@ -20,5 +20,6 @@
 #include "malloc.h"
 #include "event.h"
 #include "beep.h"
+#include "render.h"
 
 #endif // HLOS_H

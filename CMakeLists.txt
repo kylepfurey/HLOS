@@ -35,6 +35,8 @@ add_executable(hlos
         kernel/print.h
         kernel/read.c
         kernel/read.h
+        kernel/render.c
+        kernel/render.h
         kernel/rng.c
         kernel/rng.h
         kernel/string.c

@@ -43,6 +43,12 @@ extern byte_t __IDT_start;
 /** The byte after the end of the Interrupt Descriptor Table. */
 extern byte_t __IDT_end;
 
+/** The first byte of the Pixel Buffer Array. */
+extern byte_t __PBA_start;
+
+/** The byte after the end of the Pixel Buffer Array. */
+extern byte_t __PBA_end;
+
 /** The first byte of the Video Graphics Array. */
 extern byte_t __VGA_start;
 
