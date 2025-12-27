@@ -8,9 +8,7 @@
 #include "types.h"
 
 /** Whether pixel rendering is enabled (otherwise uses text rendering). */
-#ifndef PBA_ENABLED
 #define PIXEL_RENDERING 0
-#endif
 
 /** Pixel Buffer Array index port. */
 #define PBA_INDEX_PORT 0x3C8
