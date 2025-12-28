@@ -372,7 +372,7 @@ Now that we have a FAT32 on disk, I updated my bootloader's master boot record s
 
 ![HLOS Files](pics/HLOS_Files.png)
 
-###File Allocation Table
+### File Allocation Table
 
 FAT32 has this concept called clusters, which are contiguous sectors in memory used to divide up larger hard drives into bigger chunks of memory (this is crucial for extremely large drives). For simplicity, HLOS uses 1 sector wide clusters, but can be easily changed by updating the argument passed to `format()`. Files larger than one cluster are chained together in a linked list in the FAT.
 
@@ -423,7 +423,7 @@ FAT32_directory_t FAT32_find(string_t path, FAT32_cluster_t *clus);
 bool_t FAT32_free(string_t path);
 ```
 
-###File System API
+### File System API
 
 This was definitley the hardest part of designing HLOS and I ended up making some nifty development tools like `step()` and `dump()` as I tested each function to ensure it was properly reading and writing to disk and correctly caching the FAT. The end result of being able to use HLOS as a working filesystem was super satisfying, and the last submilestone was to create nice wrappers around these functions for common file operations:
 
