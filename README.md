@@ -280,9 +280,11 @@ To recap: All memory is divided up into pages that act as a giant linked list in
 
 Unlike a lot of what I had developed up until this point, the 32-bit File Allocation Table (FAT32) is a standard implemented by most modern operating systems. This is simply a way to organize your hard drive so that files can be stored and retrieved later. My real goal with this final milestone was to allow my OS to read and write files from other operating systems. This final milestone had three submilestones:
 
-1. Submilestone 1 - Sectors
-2. Submilestone 2 - FAT
-3. Submilestone 3 - File System
+1. Submilestone 1 - [Sectors](#sector-formatting)
+2. Submilestone 2 - [FAT](#file-allocation-table)
+3. Submilestone 3 - [File System](#file-system-api)
+
+### Sector Formatting
 
 The first submilestone was simply reading and writing to the hard drive. Similar to how the RAM organizes its memory into pages, the hard drive organizes itself into sectors. A sector is simply 512 bytes and is readable by a sector offset using a combination of `in()` and `out()` calls to the Advanced Technology Attachment (ATA). I implemented a `secread()` and `secwrite()` function to allow reading and writing to disk:
 
@@ -370,6 +372,8 @@ Now that we have a FAT32 on disk, I updated my bootloader's master boot record s
 
 ![HLOS Files](pics/HLOS_Files.png)
 
+###File Allocation Table
+
 FAT32 has this concept called clusters, which are contiguous sectors in memory used to divide up larger hard drives into bigger chunks of memory (this is crucial for extremely large drives). For simplicity, HLOS uses 1 sector wide clusters, but can be easily changed by updating the argument passed to `format()`. Files larger than one cluster are chained together in a linked list in the FAT.
 
 The FAT itself is just an array of `int`s where each FAT entry is a cluster and the value is the index of the next cluster. There is a special end-of-file number used to signify the end of a cluster chain. The last thing to note about clusters is a special type of file known as a directory. A directory is essentially a 32-byte file that points to a cluster containing either a file or another directory. This is how you store metadata for files like their name, size, and permissions.
@@ -418,6 +422,8 @@ FAT32_directory_t FAT32_find(string_t path, FAT32_cluster_t *clus);
 /** Frees the cluster chain at the given path. */
 bool_t FAT32_free(string_t path);
 ```
+
+###File System API
 
 This was definitley the hardest part of designing HLOS and I ended up making some nifty development tools like `step()` and `dump()` as I tested each function to ensure it was properly reading and writing to disk and correctly caching the FAT. The end result of being able to use HLOS as a working filesystem was super satisfying, and the last submilestone was to create nice wrappers around these functions for common file operations:
 
