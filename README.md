@@ -2,6 +2,9 @@
 
 Welcome to the **High-Level Operating System** (HLOS). This was my big project that I was working on this past semester for my Operating Systems Principles and Applications class. I consider this to be the first big project for my Masters Degree in Computer Science at Southern New Hampshire University, and there will be more to come!
 
+[![Demo Video](https://img.youtube.com/vi/cZszeGxTHvI/0.jpg)](https://youtu.be/cZszeGxTHvI)
+<br/>[Demo Video](https://youtu.be/cZszeGxTHvI?si=WqV63wrcbDvnKI1)
+
 I have divided my work into 3 milestones, with the end goal to be getting a fully working FAT32 implementation. The milestones are as follows:
 
 1. Milestone 1 - [Bootloader](#the-bootloader) + [Printing](#printing)
