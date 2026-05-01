@@ -85,6 +85,10 @@ extern volatile uint_t ticks;
 /** The number of ticks to increment each interrupt by the Programmable Interval Timer. */
 extern uint_t speed;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** Returns the total number of milliseconds since the kernel booted. */
 uint_t time();
 
@@ -102,5 +106,9 @@ string_t datestr(date_t date, bool_t hr24);
 
 /** Increments the kernel timer. */
 void tick();
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // HLOS_TIME_H

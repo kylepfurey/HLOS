@@ -119,6 +119,10 @@ typedef struct IDT {
 /** The Interrupt Descriptor Table. */
 extern IDT_t IDT;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** Enables hardware with the given Interrupt Request mask. */
 void IRQ_enable(IRQ_mask_t mask);
 
@@ -127,5 +131,9 @@ void IRQ_disable(IRQ_mask_t mask);
 
 /** Sets and returns an entry in the Interrupt Descriptor Table. */
 volatile IDT_entry_t *IDT_bind(PIC_entry_t index, void *callback, ushort_t selector, IDT_flags_t flags);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // HLOS_INTERRUPT_H

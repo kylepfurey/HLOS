@@ -214,6 +214,10 @@ typedef struct FAT32_cache {
 /** Cached data for the mounted File Allocation Table (32-bit). */
 extern FAT32_cache_t FAT32;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * Reads the file at <path> at <offset> for <size> into <file>.
  * Returns whether reading was successful.
@@ -286,5 +290,9 @@ char_t *secread(ATA_port_t port, byte_t drive, uint_t sec, byte_t num, char_t *s
 
 /** Writes <str> into <num> number of 512-byte sectors at <sec>. */
 string_t secwrite(ATA_port_t port, byte_t drive, uint_t sec, byte_t num, string_t str);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // HLOS_FILE_H

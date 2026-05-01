@@ -40,6 +40,10 @@ extern void (*volatile events[MAX_EVENTS])(void *);
 /** Each bound coroutine. */
 extern volatile coroutine_t coroutines[MAX_COROUTINES];
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** Sets the event callback at the given index. */
 void event(uint_t index, void (*event)(void *));
 
@@ -59,5 +63,9 @@ bool_t cancel(handle_t handle);
 
 /** Processes coroutines. */
 void async();
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // HLOS_EVENT_H

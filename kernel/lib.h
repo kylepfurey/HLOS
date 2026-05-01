@@ -22,6 +22,10 @@
 /** Converts raw memory into a string. */
 #define tostr(mem) dump(sizeof(mem), &mem)
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** Halts the kernel. */
 void pause();
 
@@ -99,5 +103,9 @@ uint_t find(const void *dest, uint_t size1, const void *src, uint_t size2);
 
 /** Copies <src> of size <size2> right after <dest> at <size1>. Returns <dest>. */
 void *append(void *dest, uint_t size1, const void *src, uint_t size2);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // HLOS_LIB_H

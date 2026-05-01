@@ -80,6 +80,10 @@ typedef struct point {
 /** The Pixel Buffer Array. */
 extern PBA_t PBA;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** Renders the frame buffer to the Pixel Buffer Array. */
 void render();
 
@@ -100,5 +104,9 @@ void square(point_t start, point_t end, color_t color);
  * <glyph> must be of size GLYPH_HEIGHT.
  */
 void glyph(point_t point, const byte_t *glyph, color_t color);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // HLOS_RENDER_H

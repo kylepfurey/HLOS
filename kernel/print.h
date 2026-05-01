@@ -74,6 +74,10 @@ typedef struct VGA {
 /** The Video Graphics Array. */
 extern VGA_t VGA;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** Prints a message to the Video Graphics Array. */
 void print(string_t msg);
 
@@ -94,5 +98,9 @@ void color(VGA_color_t fg, VGA_color_t bg);
  * Returns the character at that position.
  */
 char_t pos(byte_t col, byte_t row);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // HLOS_PRINT_H

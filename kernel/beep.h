@@ -22,10 +22,18 @@ typedef enum speaker_flags {
     SPEAKER_FLAGS_CLEAR = 252,
 } speaker_flags_t;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** Beeps the computer. */
 void beep();
 
 /** Beeps for the given frequency in hertz and duration in milliseconds. */
 void freq(uint_t hz, uint_t ms);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // HLOS_BEEP_H

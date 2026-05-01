@@ -112,6 +112,10 @@ extern page_t *free_page;
 /** The next free memory block. */
 extern block_t *free_block;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * Allocates the given number of bytes on the heap.
  * Returns a pointer to the new memory or NULL if allocation failed.
@@ -142,5 +146,9 @@ void pagefree(page_t *page);
 
 /** Asserts on a page fault. */
 void crash(uint_t err);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // HLOS_MALLOC_H

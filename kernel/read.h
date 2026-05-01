@@ -184,6 +184,10 @@ extern const char_t SCANSHIFT[SCANCODE_COUNT];
 /** The current state of the user's keyboard. */
 extern volatile keyboard_t keyboard;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * Reads an input string from the user, appended to <start>.
  * The maximum string length is min(<len>, MAX_INPUT_LEN).
@@ -210,5 +214,9 @@ bool_t scan(key_state_t *key, char_t *c);
 
 /** Updates the state of the keyboard. */
 void key();
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // HLOS_READ_H

@@ -10,6 +10,10 @@
 /** The x86 return instruction. */
 #define RET 0xC3
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** Pauses the CPU. */
 extern void hlt();
 
@@ -52,5 +56,9 @@ extern void enable_paging();
 
 /** Forces the CPU to refresh a memory page. */
 extern void invlpg(const void *addr);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // HLOS_ASSEMBLY_H

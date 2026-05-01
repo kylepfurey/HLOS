@@ -76,7 +76,15 @@ extern byte_t __kernel_heap_end;
 /** The first byte of the user heap memory. */
 extern byte_t __heap_start;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** Initializes the kernel. */
 void init();
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // HLOS_INIT_H

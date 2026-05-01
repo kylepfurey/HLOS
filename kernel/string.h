@@ -17,6 +17,10 @@ typedef enum comparison {
     GREATER_THAN = 1
 } comparison_t;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** Returns whether the given character is a letter. */
 bool_t isletter(char_t c);
 
@@ -117,5 +121,9 @@ bool_t strint(string_t str, int_t *num);
  * The returned string is reused for all conversions.
  */
 string_t intstr(int_t num);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // HLOS_STRING_H
