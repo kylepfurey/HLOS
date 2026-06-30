@@ -77,12 +77,12 @@ typedef struct point {
     ushort_t y;
 } point_t;
 
-/** The Pixel Buffer Array. */
-extern PBA_t PBA;
-
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/** The Pixel Buffer Array. */
+extern PBA_t PBA;
 
 /** Renders the frame buffer to the Pixel Buffer Array. */
 void render();
