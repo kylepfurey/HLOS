@@ -7,12 +7,12 @@
 
 #include "types.h"
 
-/** The seed for random number generation. */
-extern uint_t seed;
-
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/** The seed for random number generation. */
+extern uint_t seed;
 
 /** Returns a pseudo-randomly generated number. */
 uint_t rng();
