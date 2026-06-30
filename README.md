@@ -277,7 +277,7 @@ page_t *pagealloc(bool_t table);
 void pagefree(page_t *page);
 ```
 
-To recap: All memory is divided up into pages that act as a giant linked list in memory. `pagealloc()` pulls a new 4 kilobyte page to either be used as a page table for virtual mapping or as new heap memory. `map()` and `unmap()` automatically update or alloacte a new page table in the page directory so the CPU can safely map the memory. `malloc()` divides up premapped pages of memory into blocks for whatever the caller needs. The kernel is already identitiy mapped so `malloc()` can be used immediately. For future development, a process scheduler would allocate and map pages in the user heap for programs so they would get their own address space and can use `malloc()` as well. 
+To recap: All memory is divided up into pages that act as a giant linked list in memory. `pagealloc()` pulls a new 4 kilobyte page to either be used as a page table for virtual mapping or as new heap memory. `map()` and `unmap()` automatically update or allocate a new page table in the page directory so the CPU can safely map the memory. `malloc()` divides up premapped pages of memory into blocks for whatever the caller needs. The kernel is already identitiy mapped so `malloc()` can be used immediately. For future development, a process scheduler would allocate and map pages in the user heap for programs so they would get their own address space and can use `malloc()` as well. 
 
 ## [FAT32](kernel/file.h)
 
