@@ -71,12 +71,12 @@ typedef struct VGA {
     byte_t color;
 } VGA_t;
 
-/** The Video Graphics Array. */
-extern VGA_t VGA;
-
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/** The Video Graphics Array. */
+extern VGA_t VGA;
 
 /** Prints a message to the Video Graphics Array. */
 void print(string_t msg);
