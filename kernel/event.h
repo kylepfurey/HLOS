@@ -34,15 +34,15 @@ typedef struct coroutine {
     void *args;
 } coroutine_t;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** Each bound event function. */
 extern void (*volatile events[MAX_EVENTS])(void *);
 
 /** Each bound coroutine. */
 extern volatile coroutine_t coroutines[MAX_COROUTINES];
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 /** Sets the event callback at the given index. */
 void event(uint_t index, void (*event)(void *));
