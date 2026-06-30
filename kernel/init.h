@@ -7,6 +7,10 @@
 
 #include "types.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** The last byte of the 16-bit stack. */
 extern byte_t __stack16_end;
 
@@ -75,10 +79,6 @@ extern byte_t __kernel_heap_end;
 
 /** The first byte of the user heap memory. */
 extern byte_t __heap_start;
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 /** Initializes the kernel. */
 void init();
