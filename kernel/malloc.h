@@ -97,6 +97,10 @@ typedef struct block {
     struct block *next;
 } block_t;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** The global Page Directory. */
 extern volatile page_directory_t *page_directory;
 
@@ -111,10 +115,6 @@ extern page_t *free_page;
 
 /** The next free memory block. */
 extern block_t *free_block;
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 /**
  * Allocates the given number of bytes on the heap.
