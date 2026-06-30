@@ -79,15 +79,15 @@ typedef struct date {
     byte_t second;
 } date_t;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** The number of ticks since the kernel started. */
 extern volatile uint_t ticks;
 
 /** The number of ticks to increment each interrupt by the Programmable Interval Timer. */
 extern uint_t speed;
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 /** Returns the total number of milliseconds since the kernel booted. */
 uint_t time();
