@@ -211,12 +211,12 @@ typedef struct FAT32_cache {
     FAT32_cluster_t *table;
 } FAT32_cache_t;
 
-/** Cached data for the mounted File Allocation Table (32-bit). */
-extern FAT32_cache_t FAT32;
-
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/** Cached data for the mounted File Allocation Table (32-bit). */
+extern FAT32_cache_t FAT32;
 
 /**
  * Reads the file at <path> at <offset> for <size> into <file>.
