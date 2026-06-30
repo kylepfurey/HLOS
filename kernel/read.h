@@ -175,6 +175,10 @@ typedef struct keyboard {
     key_state_t queue[MAX_KEY_STATES];
 } keyboard_t;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** A mapping of each scancode to a keyboard character. */
 extern const char_t SCANCHAR[SCANCODE_COUNT];
 
@@ -183,10 +187,6 @@ extern const char_t SCANSHIFT[SCANCODE_COUNT];
 
 /** The current state of the user's keyboard. */
 extern volatile keyboard_t keyboard;
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 /**
  * Reads an input string from the user, appended to <start>.
