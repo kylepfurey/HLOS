@@ -116,12 +116,12 @@ typedef struct IDT {
     volatile IDT_entry_t *const entries;
 } IDT_t;
 
-/** The Interrupt Descriptor Table. */
-extern IDT_t IDT;
-
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/** The Interrupt Descriptor Table. */
+extern IDT_t IDT;
 
 /** Enables hardware with the given Interrupt Request mask. */
 void IRQ_enable(IRQ_mask_t mask);
